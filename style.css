@@ -1,0 +1,12 @@
+html {
+    font-family: sans-serif;
+    background-color: black;
+    color: white;
+}
+
+div.error {
+    font-weight: bold;
+}
+div.error h1{
+    color: red;
+}

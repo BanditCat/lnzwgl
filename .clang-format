@@ -1,0 +1,11 @@
+BasedOnStyle: google
+IndentWidth: 2
+
+
+Language: JavaScript
+ColumnLimit: 160
+SpacesInConditionalStatement: true
+SpacesInParentheses: true
+AlignAfterOpenBracket: Align
+BinPackArguments: true
+Cpp11BracedListStyle: true
