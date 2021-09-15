@@ -1,11 +1,14 @@
 BasedOnStyle: google
-IndentWidth: 2
+IndentWidth: 8
 
 
 Language: JavaScript
+AlignArrayOfStructures: Left
 ColumnLimit: 160
 SpacesInConditionalStatement: true
 SpacesInParentheses: true
 AlignAfterOpenBracket: Align
 BinPackArguments: true
 Cpp11BracedListStyle: true
+SpacesInSquareBrackets: true
+SpacesInContainerLiterals: true

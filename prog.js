@@ -5,7 +5,7 @@ class State {
                 this.readSize = readSize;
                 this.writeReadSize = writeReadSize;
                 this.count = 1 << ( 8 * ( readSize + writeReadSize ) );
-                let map = new Uint32Array( this.count );
+                let map = new Uint32Array( this.count * 4 );
                 let outt = new Uint8Array[ 7 ];
                 for ( let i = 0; i < this.count; ++i ) {
                         let out = outFunc( i );

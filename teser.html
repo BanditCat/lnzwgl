@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>n-dimensional cubes</title>
+    <style>
+        html {
+            background-color: black;
+            color: white;
+            font-family: monospace, sans-serif;
+        }
+
+        .slider {
+            -webkit-appearance: none;
+            -webkit-transition: .2s;
+            appearance: none;
+            height: 1em;
+            background: #d3d3d3;
+            outline: none;
+            opacity: 0.8;
+            transition: opacity .05s;
+            float: right;
+            width: 60%;
+        }
+
+        .slider:hover {
+            opacity: 1;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 1.5em;
+            height: 1.5em;
+            background: #70ddb3;
+            transition: background-color 0.05s;
+            border-width: 0px;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 1.5em;
+            height: 1.5em;
+            background: #70ddb3;
+            transition: background-color 0.05s;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .slider::-moz-range-thumb:hover {
+            background: #ffffff;
+        }
+
+        #panel {
+            border-style: solid;
+            border-width: 0.5em;
+            border-color: #3532da;
+            padding: 0.67em;
+            float: right;
+            width: 80%;
+            box-sizing: border-box;
+        }
+
+        .control {
+            padding-bottom: 1em;
+            font-weight: bolder;
+        }
+
+        .controlBottom {
+            font-weight: bolder;
+        }
+
+        canvas {
+            float: left;
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="c" width="500" height="500"></canvas>
+    <br>
+    <p>Drag to rotate, double tap to change axes of rotation.</p>
+    <div id="panel"></div>
+    <script>
+        // display name, id, min, max, default, step
+        let params = [
+            ["Dimension", "dim", 2, 8, 4, 1],
+            ["Line width", "lineWidth", 0.01, 4, 1, 0.001],
+            ["Distance", "dist", 1, 5, 2.5, 0.001],
+            ["Zoom", "zoom", -5, 5, 1, 0.001],
+            ["Line segments", "segments", 1, 10, 3, 1],
+            ["Rotation speed", "rotSpeed", 0, 20, 1, 0.1]
+
+        ]
+        let paramValues = {}
+        params.forEach(e => {
+            paramValues[e[1]] = e[4];
+        });
+        function upd(id, name, value) {
+            document.querySelector('#' + id + 'Label').innerHTML = name + ': ' + value;
+            paramValues[id] = parseFloat(value);
+        }
+
+        let s = "";
+        params.forEach((e, i) => {
+            s += '<div class="' + (i != params.length - 1 ? 'control' : 'controlBottom') + '"><label id="' + e[1] + 'Label" class="left" for="' + e[1] + '">' + e[0] + ': ' + e[4] + '</label>';
+            s += '<input onchange="upd(' + "'" + e[1] + "','" + e[0] + "'" + ',this.value)" id="' + e[1] + '"type="range" min="' + e[2] + '"" max="' + e[3] + '" value="' + e[4] + '" step="' + e[5] + '"class="slider" id="myRange"></div>';
+
+        });
+        document.querySelector("#panel").innerHTML = s
+    </script>
+</body>
+
+<script>
+    let c = document.getElementById('c');;
+    let x = c.getContext('2d');
+    let mrots = [];
+    let maxis1 = 0;
+    let maxis2 = 1;
+    let maxis3 = 2;
+    function resize() {
+        let dw = document.body.clientWidth || 400;
+        let dh = document.documentElement.clientHeight || 400;
+        let ddim = 0;
+        if (dw > dh) {
+            ddim = dw * 0.5;
+
+        } else {
+            ddim = dw;
+        }
+        c.width = c.height = ddim;
+        document.getElementById("panel").style.width = ddim + "px";
+
+    }
+    window.onresize = resize;
+    c.onmousemove = c.touchmove = (ev) => {
+        if (ev.buttons & 1) {
+            document.getElementById("rotSpeed").value = "0";
+            upd("rotSpeed", "Rotation speed", 0);
+            if (!mrots[maxis1]) mrots[maxis1] = [];
+            if (!mrots[maxis1][maxis3]) mrots[maxis1][maxis3] = 0;
+            if (!mrots[maxis2]) mrots[maxis2] = [];
+            if (!mrots[maxis2][maxis3]) mrots[maxis2][maxis3] = 0;
+            mrots[maxis1][maxis3] += ev.movementX * 3 / c.width;
+            mrots[maxis2][maxis3] += ev.movementY * 3 / c.width;
+        }
+    }
+    c.ondblclick = (ev) => {
+        maxis1++;
+        if (maxis1 >= maxis2) {
+            maxis1 = 0;
+            maxis2++;
+            if (maxis2 >= maxis3) {
+                maxis1 = 0;
+                maxis2 = 1;
+                maxis3++;
+            }
+        }
+        if (maxis3 >= paramValues["dim"]) {
+            maxis1 = 0;
+            maxis2 = 1;
+            maxis3 = 2;
+        }
+    }
+    resize();
+    function u(t) {
+
+
+        x.clearRect(0, 0, c.width, c.height);
+        let mdist = paramValues["dist"] * Math.sqrt(paramValues["dim"]);
+        let mzoom = 0.001 * (2 ** paramValues["zoom"]) * (8 ** paramValues["dim"]);
+
+        let q = (v, l) => l.map((i) => i.concat([v]))
+        let r = (n, l) => n ? r(n - 1, q(-1, l).concat(q(1, l))) : l
+        let s = (n, l) => n ? l.map((i) => (i.push(i.shift()), i.slice())).concat(s(n - 1, l)) : []
+        let u = (n) => s(n, r(n, [[]]))
+
+        let dd = (l) => l.map((i) => i.map((v) => v / (i[0] + mdist))).map((i) => (i.shift(), i))
+
+        let rot = (l, t, a1, a2) => l.map((i) => i.map((v, j) => (j == a1 ? v * Math.cos(t) + i[a2] * Math.sin(t) : (j == a2 ? v * Math.cos(t) - i[a1] * Math.sin(t) : v))))
+
+        let ps = u(paramValues["dim"]);
+        let e = ps[0].length
+
+        let rots = []
+        if (paramValues["rotSpeed"]) {
+            while (--e) {
+                let d = e;
+                while (d--) {
+                    rots.push([e, d, t * paramValues["rotSpeed"] * 10 / (e * 10 + d)])
+                }
+            }
+        } else {
+            mrots.forEach((u, j) => (u.forEach((v, k) => (j < paramValues["dim"] && k < paramValues["dim"]) ? rots.push([j, k, v]) : [])));
+        }
+        rots.forEach(e => {
+            ps = rot(ps, e[2], e[0], e[1]);
+        })
+        while (ps[0].length > 3)
+            ps = dd(ps)
+        let widths = []
+        if (ps[0].length == 3) {
+            widths = ps.map((i) => 10 * paramValues["lineWidth"] / (i[0] + mdist))
+            ps = dd(ps)
+        } else
+            widths = ps.map((i) => paramValues["lineWidth"]);
+        let d = ps.map((i) => (i.map((j) => j * 0.5 * mzoom + 0.5)))
+
+
+        let i = 0;
+        while (d[i]) {
+            let s = paramValues["segments"];
+            let xb = d[i][0] * c.height;
+            let yb = d[i][1] * c.height;
+            let wb = widths[i++];
+            let xs = d[i][0] * c.height - xb;
+            let ys = d[i][1] * c.height - yb;
+            let ws = (widths[i++] - wb);
+            x.beginPath()
+            x.strokeStyle = 'white'
+            x.moveTo(xb, yb);
+            while (s--) {
+                sc = 1 - (s / paramValues["segments"])
+                x.lineWidth = wb + sc * ws;
+                x.lineTo(xb + sc * xs, yb + sc * ys)
+                x.stroke();
+
+            }
+        }
+
+    }
+    function l() {
+
+        u((new Date()).getTime() / 1000);
+        requestAnimationFrame(l);
+    }
+    requestAnimationFrame(l);
+</script>
+
+</html>
