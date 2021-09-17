@@ -6,20 +6,27 @@
     <title>n-dimensional cubes</title>
     <style>
         html {
-            background-color: black;
-            color: white;
-            font-family: monospace, sans-serif;
+            --border: #87FFDD;
+            --control: #87E4FF;
+            --controlBackground: #FFFFFF;
+            --bg: #000000;
+            --fg: #FFFFFF;
+
+            background-color: var(--bg);
+            color: var(--fg);
+            font-family: sans-serif;
         }
 
         .slider {
             -webkit-appearance: none;
             -webkit-transition: .2s;
             appearance: none;
-            height: 1em;
-            background: #d3d3d3;
+            height: 0.75em;
+            background: var(--controlBackground);
             outline: none;
             opacity: 0.8;
             transition: opacity .05s;
+            display: inline-flex;
             float: right;
             width: 60%;
         }
@@ -31,9 +38,9 @@
         .slider::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 1.5em;
-            height: 1.5em;
-            background: #70ddb3;
+            width: 1.25em;
+            height: 1.25em;
+            background: var(--control);
             transition: background-color 0.05s;
             border-width: 0px;
             cursor: pointer;
@@ -43,7 +50,7 @@
         .slider::-moz-range-thumb {
             width: 1.5em;
             height: 1.5em;
-            background: #70ddb3;
+            background: var(--control);
             transition: background-color 0.05s;
             cursor: pointer;
             outline: none;
@@ -53,64 +60,82 @@
             background: #ffffff;
         }
 
-        #panel {
-            border-style: solid;
-            border-width: 0.5em;
-            border-color: #3532da;
-            padding: 0.67em;
-            float: right;
-            width: 80%;
-            box-sizing: border-box;
-        }
-
         .control {
             padding-bottom: 1em;
             font-weight: bolder;
+            border: 0%;
         }
 
-        .controlBottom {
-            font-weight: bolder;
+        #panel {
+            border-style: solid;
+            border-width: 0.25em;
+            border-color: var(--border);
+            box-sizing: border-box;
+            padding: 0.5em;
+            display: inline-block;
+            float: right;
         }
 
-        canvas {
+        #c {
+            border-style: solid;
+            border-width: 0.25em;
+            border-color: var(--border);
+            box-sizing: border-box;
+            display: inline-block;
             float: left;
+
         }
     </style>
 </head>
 
 <body>
 
-    <canvas id="c" width="500" height="500"></canvas>
-    <br>
-    <p>Drag to rotate, double tap to change axes of rotation.</p>
+    <canvas id="c" width="100%" height="100%"></canvas>
     <div id="panel"></div>
     <script>
         // display name, id, min, max, default, step
-        let params = [
-            ["Dimension", "dim", 2, 8, 4, 1],
-            ["Line width", "lineWidth", 0.01, 4, 1, 0.001],
-            ["Distance", "dist", 1, 5, 2.5, 0.001],
-            ["Zoom", "zoom", -5, 5, 1, 0.001],
-            ["Line segments", "segments", 1, 10, 3, 1],
-            ["Rotation speed", "rotSpeed", 0, 20, 1, 0.1]
-
-        ]
+        function axisname(x, dim) {
+            if (dim == 2) {
+                return "xy";
+            } else {
+                let arr = [...Array(dim).keys()];
+                let combos = arr.flatMap(e => arr.filter(f => f > e).map(g => [e, g]));
+                let c = x;
+                let a1 = c % (combos.length - 1);
+                c = Math.floor(c / (combos.length - 1));
+                let a2 = combos[c % (combos.length - a1 - 1) + a1 + 1];
+                a1 = combos[a1];
+                let axisString = "xyzwuvtsrqponmlkjihgfedcba";
+                return axisString.substr(a1[0], 1) + axisString.substr(a1[1], 1) + "," + axisString.substr(a2[0], 1) + axisString.substr(a2[1], 1);
+            }
+        }
+        let params = {
+            'dim': [(v) => "Dimension: " + v, 2, 8, 4, 1],
+            'lineWidth': [(v) => "Line width: " + v, 0.01, 4, 1, 0.001],
+            'dist': [(v) => "Distance: " + v, 1, 5, 2.5, 0.001],
+            'zoom': [(v) => "Zoom: " + v, -5, 5, 1, 0.001],
+            'segments': [(v) => "Line segments: " + v, 1, 10, 3, 1],
+            'rotSpeed': [(v) => "Rotation speed: " + v, 0, 20, 1, 0.1],
+            //'rotAxis': [(v) => "Rotation axis: " + axisname(parseFloat(v), 4), 0, 20, 1, 1]
+        }
         let paramValues = {}
-        params.forEach(e => {
-            paramValues[e[1]] = e[4];
-        });
-        function upd(id, name, value) {
-            document.querySelector('#' + id + 'Label').innerHTML = name + ': ' + value;
+        Object.keys(params).forEach(e => paramValues[e] = params[e][3]);
+        function upd(id, value, controled) {
+            document.getElementById(id + 'Label').innerHTML = params[id][0](value);
+            if (!controled) {
+                document.getElementById(id).value = value;
+            }
             paramValues[id] = parseFloat(value);
         }
 
         let s = "";
-        params.forEach((e, i) => {
-            s += '<div class="' + (i != params.length - 1 ? 'control' : 'controlBottom') + '"><label id="' + e[1] + 'Label" class="left" for="' + e[1] + '">' + e[0] + ': ' + e[4] + '</label>';
-            s += '<input onchange="upd(' + "'" + e[1] + "','" + e[0] + "'" + ',this.value)" id="' + e[1] + '"type="range" min="' + e[2] + '"" max="' + e[3] + '" value="' + e[4] + '" step="' + e[5] + '"class="slider" id="myRange"></div>';
-
+        Object.keys(params).forEach(i => {
+            let e = params[i];
+            s += '<div class="control"><label id="' + i + 'Label" class="left" for="' + i + '">' + e[0](e[3]) + '</label>';
+            s += '<input oninput="upd(' + "'" + i + "'," + 'this.value,true)" id="' + i + '"type="range" min="' + e[1] + '"" max="' + e[2] + '" value="' + e[3] + '" step="' + e[4] + '"class="slider" id="myRange"></div>';
         });
-        document.querySelector("#panel").innerHTML = s
+        s += "<p>Drag to rotate, double tap to change axes of rotation.</p>";
+        document.querySelector("#panel").innerHTML = s;
     </script>
 </body>
 
@@ -123,23 +148,30 @@
     let maxis3 = 2;
     function resize() {
         let dw = document.body.clientWidth || 400;
-        let dh = document.documentElement.clientHeight || 400;
-        let ddim = 0;
+        let dh = document.documentElement.clientHeight - 20 || 400; // wtf does this -20 come from?
         if (dw > dh) {
-            ddim = dw * 0.5;
-
+            dw = dw * 0.5 - 5;
+            document.getElementById("panel").style.height = dh + "px";
+            document.getElementById("panel").style.float = "right";
+            document.getElementById("c").style.marginBottom = "0px";
         } else {
-            ddim = dw;
+            dh = dw;
+            document.getElementById("panel").style.height = "auto";
+            document.getElementById("panel").style.float = "left";
+            document.getElementById("c").style.marginBottom = "10px";
         }
-        c.width = c.height = ddim;
-        document.getElementById("panel").style.width = ddim + "px";
-
+        document.getElementById("panel").style.width = dw + "px";
+        c.style.width = dw + "px";
+        c.style.height = dh + "px";
+        c.width = c.clientWidth;
+        c.height = c.clientHeight;
     }
     window.onresize = resize;
+    resize();
+    resize();
     c.onmousemove = c.touchmove = (ev) => {
         if (ev.buttons & 1) {
-            document.getElementById("rotSpeed").value = "0";
-            upd("rotSpeed", "Rotation speed", 0);
+            upd("rotSpeed", 0);
             if (!mrots[maxis1]) mrots[maxis1] = [];
             if (!mrots[maxis1][maxis3]) mrots[maxis1][maxis3] = 0;
             if (!mrots[maxis2]) mrots[maxis2] = [];
@@ -165,11 +197,11 @@
             maxis3 = 2;
         }
     }
-    resize();
     function u(t) {
 
 
         x.clearRect(0, 0, c.width, c.height);
+        let scaleDim = Math.sqrt(c.width * c.width + c.height * c.height) / Math.sqrt(2);
         let mdist = paramValues["dist"] * Math.sqrt(paramValues["dim"]);
         let mzoom = 0.001 * (2 ** paramValues["zoom"]) * (8 ** paramValues["dim"]);
 
@@ -207,17 +239,19 @@
             ps = dd(ps)
         } else
             widths = ps.map((i) => paramValues["lineWidth"]);
-        let d = ps.map((i) => (i.map((j) => j * 0.5 * mzoom + 0.5)))
+        let d = ps.map((i) => (i.map((j) => j * 0.5 * mzoom)))
 
 
         let i = 0;
         while (d[i]) {
+            let ox = c.width / 2;
+            let oy = c.height / 2;
             let s = paramValues["segments"];
-            let xb = d[i][0] * c.height;
-            let yb = d[i][1] * c.height;
+            let xb = d[i][0] * scaleDim + ox;
+            let yb = d[i][1] * scaleDim + oy;
             let wb = widths[i++];
-            let xs = d[i][0] * c.height - xb;
-            let ys = d[i][1] * c.height - yb;
+            let xs = d[i][0] * scaleDim + ox - xb;
+            let ys = d[i][1] * scaleDim + oy - yb;
             let ws = (widths[i++] - wb);
             x.beginPath()
             x.strokeStyle = 'white'
