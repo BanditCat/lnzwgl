@@ -3,12 +3,64 @@
 
 <head>
     <meta charset="utf-8">
-    <title>n-dimensional cubes</title>
+    <title>Hypergeometry</title>
+    <script>
+        codes = [`
+// you can add extra parameters to the list of sliders like this
+
+//        parameter name    display function            min   max  default  step
+params = {'saturation':     [v => "Saturation: " + v,   1,    10,  3,       1]}
+
+
+// r generates the points of a hypercube
+let q = (v, l) => l.map((i) => i.concat([v]))
+let r = (n, l) => n ? r(n - 1, q(-1, l).concat(q(1, l))) : l
+points = r(paramValues.dim, [[]]);
+
+
+// function to rotate bits
+function shl(x, highBit) {
+    let b = x & 1;
+    x >>= 1;
+    if (b)
+        x += points.length / 2;
+    return x;
+}
+
+
+// edges contains indices into points
+edges = [];
+for (let i = 0; i < points.length / 2; ++i) {
+    let x = i * 2;
+    let y = x + 1;
+    for (let d = 0; d < paramValues.dim; d++) {
+        let p = [x, y];
+        p = p.concat(hsv2rgb((d / paramValues.dim + 12) * 360, 0.3, 1));
+        edges.push(p);
+        x = shl(x); y = shl(y);
+    }
+}`,
+            "jchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEV"]
+        let points = [];
+        let edges = [];
+        function hsv2rgb(h, s, v) {
+            function f(n) {
+                let k = (n + h / 60) % 6;
+                return v - v * s * Math.max(Math.min(k, 4 - k, 1), 0);
+            }
+            return [Math.floor(f(5) * 256), Math.floor(f(3) * 256), Math.floor(f(1) * 256)];
+        }
+    </script>
     <style>
         html {
             --border: #87FFDD;
+            --borderWidth: 1px;
             --control: #87E4FF;
+            --editBorder: #87ffb5;
+            --editbg: #171717;
+            --editfg: #ffe5e5;
             --controlBackground: #FFFFFF;
+            --errorColor: #FF0000;
             --bg: #000000;
             --fg: #FFFFFF;
 
@@ -26,7 +78,7 @@
             outline: none;
             opacity: 0.8;
             transition: opacity .05s;
-            display: inline-flex;
+            display: inline;
             float: right;
             width: 60%;
         }
@@ -68,21 +120,51 @@
 
         #panel {
             border-style: solid;
-            border-width: 0.25em;
+            border-width: var(--borderWidth);
             border-color: var(--border);
             box-sizing: border-box;
             padding: 0.5em;
-            display: inline-block;
             float: right;
+            flex-flow: column;
+            display: flex;
         }
 
         #c {
             border-style: solid;
-            border-width: 0.25em;
+            border-width: var(--borderWidth);
             border-color: var(--border);
             box-sizing: border-box;
             display: inline-block;
             float: left;
+
+        }
+
+        #editDiv {}
+
+        #edit {
+            resize: none;
+            box-sizing: border-box;
+            width: 100%;
+            margin-top: 1em;
+            background-color: var(--editbg);
+            color: var(--editfg);
+            flex: 1 1 auto;
+            font-family: monospace;
+        }
+
+        select {
+            color: var(--fg);
+            background-color: var(--bg);
+        }
+
+        #message {
+            font-family: monospaced;
+
+        }
+
+        .errord {
+            color: var(--errorColor);
+            font-weight: bold;
 
         }
     </style>
@@ -93,59 +175,109 @@
     <canvas id="c" width="100%" height="100%"></canvas>
     <div id="panel"></div>
     <script>
-        // display name, id, min, max, default, step
-        function axisname(x, dim) {
-            if (dim == 2) {
+        const startDim = 4;
+        let axesCombos = [];
+        let rotations = [];
+        let axesIndices = [];
+        function incAxes() {
+            upd("rotAxes", (paramValues.rotAxes + 1) % (parseFloat(document.getElementById("rotAxes").max) + 1) + "");
+        }
+        function redim(v) {
+            let combine = (a) => a.flatMap((e, i) => a.filter((f, j) => j > i).map(g => [e, g]));
+            axes = combine([...Array(v).keys()]);
+            axesCombos = combine(axes);
+            axesIndices = combine([...axes.keys()]);
+            while (rotations.length < axes.length)
+                rotations.push(0);
+            while (rotations.length > axes.length)
+                rotations.pop();
+            if (document.getElementById("rotAxes")) {
+                document.getElementById("rotAxes").max = axesCombos.length - 1;
+                upd("rotAxes", 0);
+            }
+            if (document.getElementById("message"))
+                run();
+        }
+        function axisname(x) {
+
+            if (paramValues.dim == 2) {
                 return "xy";
             } else {
-                let arr = [...Array(dim).keys()];
-                let combos = arr.flatMap(e => arr.filter(f => f > e).map(g => [e, g]));
-                let c = x;
-                let a1 = c % (combos.length - 1);
-                c = Math.floor(c / (combos.length - 1));
-                let a2 = combos[c % (combos.length - a1 - 1) + a1 + 1];
-                a1 = combos[a1];
-                let axisString = "xyzwuvtsrqponmlkjihgfedcba";
-                return axisString.substr(a1[0], 1) + axisString.substr(a1[1], 1) + "," + axisString.substr(a2[0], 1) + axisString.substr(a2[1], 1);
+                const axisString = "xyzwuvtsrqponmlkjihgfedcba";
+                return axisString.substr(axesCombos[x][0][0], 1) + axisString.substr(axesCombos[x][0][1], 1) + "," + axisString.substr(axesCombos[x][1][0], 1) + axisString.substr(axesCombos[x][1][1], 1);
             }
         }
-        let params = {
-            'dim': [(v) => "Dimension: " + v, 2, 8, 4, 1],
-            'lineWidth': [(v) => "Line width: " + v, 0.01, 4, 1, 0.001],
-            'dist': [(v) => "Distance: " + v, 1, 5, 2.5, 0.001],
-            'zoom': [(v) => "Zoom: " + v, -5, 5, 1, 0.001],
-            'segments': [(v) => "Line segments: " + v, 1, 10, 3, 1],
-            'rotSpeed': [(v) => "Rotation speed: " + v, 0, 20, 1, 0.1],
-            //'rotAxis': [(v) => "Rotation axis: " + axisname(parseFloat(v), 4), 0, 20, 1, 1]
+        let presetParams = {
+            'dim': [v => (redim(parseFloat(v)), "Dimension: " + v), 2, 8, 4, 1],
+            'lineWidth': [v => "Line width: " + v, 0.01, 4, 1, 0.001],
+            'dist': [v => "Distance: " + v, 1, 5, 1.2, 0.001],
+            'zoom': [v => "Zoom: " + v, 0, 1.5, 1, 0.001],
+            'segments': [v => "Line segments: " + v, 1, 10, 3, 1],
+            'rotSpeed': [v => "Rotation speed: " + v, 0, 5, 1, 0.1],
+            'rotAxes': [v => "Rotation axes: " + axisname(parseFloat(v), 4), 0, 0, 1, 1]
         }
         let paramValues = {}
-        Object.keys(params).forEach(e => paramValues[e] = params[e][3]);
+        Object.keys(presetParams).forEach(e => paramValues[e] = presetParams[e][3]);
         function upd(id, value, controled) {
-            document.getElementById(id + 'Label').innerHTML = params[id][0](value);
+            paramValues[id] = parseFloat(value);
+            document.getElementById(id + 'Label').innerHTML = presetParams[id][0](value);
             if (!controled) {
                 document.getElementById(id).value = value;
             }
-            paramValues[id] = parseFloat(value);
         }
 
         let s = "";
-        Object.keys(params).forEach(i => {
-            let e = params[i];
-            s += '<div class="control"><label id="' + i + 'Label" class="left" for="' + i + '">' + e[0](e[3]) + '</label>';
-            s += '<input oninput="upd(' + "'" + i + "'," + 'this.value,true)" id="' + i + '"type="range" min="' + e[1] + '"" max="' + e[2] + '" value="' + e[3] + '" step="' + e[4] + '"class="slider" id="myRange"></div>';
-        });
-        s += "<p>Drag to rotate, double tap to change axes of rotation.</p>";
-        document.querySelector("#panel").innerHTML = s;
+        function repanel() {
+            Object.keys(presetParams).forEach(i => {
+                let e = presetParams[i];
+                s += '<div class="control"><label id="' + i + 'Label" class="left" for="' + i + '">' + e[0](e[3]) + '</label>';
+                s += '<input oninput="upd(' + "'" + i + "'," + 'this.value,true)" id="' + i + '"type="range" min="' + e[1] + '"" max="' + e[2] + '" value="' + e[3] + '" step="' + e[4] + '"class="slider" id="myRange"></div>';
+            });
+            s += '<div><label for="codeSelect">Code:</label>' +
+                '<select name="codes" id = "codeSelect" >' +
+                '<option value="0">Hypercube</option>' +
+                '<option value="1">Axes</option>' +
+                '<option value="2">Hyperball</option>' +
+                '<option value="3">Hypertorus</option>' +
+                '</select></div>';
+            s += '<textarea rows="20" spellcheck="false" id="edit"></textarea><p id="message"></p>'
+
+            document.getElementById("panel").innerHTML = s;
+            document.getElementById("edit").value = codes[0];
+            run();
+        }
+        repanel();
+        redim(startDim);
+        function log(v) {
+            document.getElementById("message").style.display = 'block';
+            document.getElementById("message").innerHTML = v;
+        }
+        function run() {
+            try {
+                let create = Function(document.getElementById("edit").value);
+                create();
+                log("");
+                document.getElementById("message").style.display = 'none';
+            } catch (err) {
+                log("<span class='errord'>Error: </span>" + err.message);
+            }
+
+        }
+        document.getElementById("codeSelect").onchange = ev => {
+            document.getElementById("edit").value = codes[ev.target.value];
+            run();
+        }
+        document.onkeydown = ev => {
+            if (ev.key == "Enter" && ev.ctrlKey)
+                run();
+        }
     </script>
 </body>
 
 <script>
     let c = document.getElementById('c');;
     let x = c.getContext('2d');
-    let mrots = [];
-    let maxis1 = 0;
-    let maxis2 = 1;
-    let maxis3 = 2;
+
     function resize() {
         let dw = document.body.clientWidth || 400;
         let dh = document.documentElement.clientHeight - 20 || 400; // wtf does this -20 come from?
@@ -154,11 +286,13 @@
             document.getElementById("panel").style.height = dh + "px";
             document.getElementById("panel").style.float = "right";
             document.getElementById("c").style.marginBottom = "0px";
+            document.documentElement.style.overflow = 'hidden';
         } else {
             dh = dw;
             document.getElementById("panel").style.height = "auto";
             document.getElementById("panel").style.float = "left";
             document.getElementById("c").style.marginBottom = "10px";
+            document.documentElement.style.overflow = 'auto';
         }
         document.getElementById("panel").style.width = dw + "px";
         c.style.width = dw + "px";
@@ -169,106 +303,95 @@
     window.onresize = resize;
     resize();
     resize();
-    c.onmousemove = c.touchmove = (ev) => {
-        if (ev.buttons & 1) {
-            upd("rotSpeed", 0);
-            if (!mrots[maxis1]) mrots[maxis1] = [];
-            if (!mrots[maxis1][maxis3]) mrots[maxis1][maxis3] = 0;
-            if (!mrots[maxis2]) mrots[maxis2] = [];
-            if (!mrots[maxis2][maxis3]) mrots[maxis2][maxis3] = 0;
-            mrots[maxis1][maxis3] += ev.movementX * 3 / c.width;
-            mrots[maxis2][maxis3] += ev.movementY * 3 / c.width;
-        }
+    let axesHandle = 0;
+    function rclickListener(ev) {
+        ev.preventDefault();
+        return false;
     }
-    c.ondblclick = (ev) => {
-        maxis1++;
-        if (maxis1 >= maxis2) {
-            maxis1 = 0;
-            maxis2++;
-            if (maxis2 >= maxis3) {
-                maxis1 = 0;
-                maxis2 = 1;
-                maxis3++;
+    c.addEventListener('contextmenu', rclickListener, false);
+    c.onclick = c.ondblclick = c.onmousemove = c.onmousedown = (ev) => {
+        if (document.pointerLockElement) {
+            let mdim = Math.sqrt(c.width * c.width + c.height * c.height);
+            let mx = ev.movementX * 0.003;
+            let my = ev.movementY * 0.003;
+            if (ev.buttons & 2)
+                document.exitPointerLock();
+            if (ev.buttons & 1) {
+                if (paramValues.dim > 2) {
+                    axesHandle = (axesHandle + mx * axesCombos.length) % axesCombos.length + axesCombos.length;
+                    upd("rotAxes", Math.floor(axesHandle - axesCombos.length) + "");
+                }
+            } else {
+                let ai = axesIndices[paramValues.rotAxes] || [0, 0];
+                rotations[ai[0]] += mx;
+                rotations[ai[1]] += my;
             }
-        }
-        if (maxis3 >= paramValues["dim"]) {
-            maxis1 = 0;
-            maxis2 = 1;
-            maxis3 = 2;
-        }
+        } else if (ev.buttons & 1)
+            c.requestPointerLock();
+
     }
-    function u(t) {
-
-
+    function u(time, delta) {
         x.clearRect(0, 0, c.width, c.height);
         let scaleDim = Math.sqrt(c.width * c.width + c.height * c.height) / Math.sqrt(2);
-        let mdist = paramValues["dist"] * Math.sqrt(paramValues["dim"]);
-        let mzoom = 0.001 * (2 ** paramValues["zoom"]) * (8 ** paramValues["dim"]);
-
-        let q = (v, l) => l.map((i) => i.concat([v]))
-        let r = (n, l) => n ? r(n - 1, q(-1, l).concat(q(1, l))) : l
-        let s = (n, l) => n ? l.map((i) => (i.push(i.shift()), i.slice())).concat(s(n - 1, l)) : []
-        let u = (n) => s(n, r(n, [[]]))
+        let mdist = paramValues.dist * 1.1 * Math.sqrt(paramValues.dim);
+        let mzoom = 0.03 * (mdist ** (paramValues.zoom * paramValues.dim));
 
         let dd = (l) => l.map((i) => i.map((v) => v / (i[0] + mdist))).map((i) => (i.shift(), i))
-
         let rot = (l, t, a1, a2) => l.map((i) => i.map((v, j) => (j == a1 ? v * Math.cos(t) + i[a2] * Math.sin(t) : (j == a2 ? v * Math.cos(t) - i[a1] * Math.sin(t) : v))))
 
-        let ps = u(paramValues["dim"]);
-        let e = ps[0].length
+        if (!document.pointerLockElement)
+            rotations = rotations.map((e, i) => e + delta * paramValues.rotSpeed * (4 / (i + 5)));
 
-        let rots = []
-        if (paramValues["rotSpeed"]) {
-            while (--e) {
-                let d = e;
-                while (d--) {
-                    rots.push([e, d, t * paramValues["rotSpeed"] * 10 / (e * 10 + d)])
-                }
-            }
-        } else {
-            mrots.forEach((u, j) => (u.forEach((v, k) => (j < paramValues["dim"] && k < paramValues["dim"]) ? rots.push([j, k, v]) : [])));
-        }
-        rots.forEach(e => {
-            ps = rot(ps, e[2], e[0], e[1]);
-        })
-        while (ps[0].length > 3)
-            ps = dd(ps)
-        let widths = []
-        if (ps[0].length == 3) {
-            widths = ps.map((i) => 10 * paramValues["lineWidth"] / (i[0] + mdist))
-            ps = dd(ps)
+        let d = [];
+        let widths = [];
+        let p = points.map(e => e.slice()).slice();
+        rotations.forEach((e, i) => {
+            p = rot(p, e, axes[i][0], axes[i][1]);
+        });
+
+        while (p[0].length > 3)
+            p = dd(p);
+        if (p[0].length == 3) {
+            widths = p.map((i) => 10 * paramValues.lineWidth / (i[0] + mdist))
+            p = dd(p);
         } else
-            widths = ps.map((i) => paramValues["lineWidth"]);
-        let d = ps.map((i) => (i.map((j) => j * 0.5 * mzoom)))
+            widths = p.map((i) => paramValues.lineWidth);
+        d = p.map((i) => (i.map((j) => j * 0.5 * mzoom)));
+
+
 
 
         let i = 0;
-        while (d[i]) {
+        while (edges[i]) {
             let ox = c.width / 2;
             let oy = c.height / 2;
-            let s = paramValues["segments"];
-            let xb = d[i][0] * scaleDim + ox;
-            let yb = d[i][1] * scaleDim + oy;
-            let wb = widths[i++];
-            let xs = d[i][0] * scaleDim + ox - xb;
-            let ys = d[i][1] * scaleDim + oy - yb;
-            let ws = (widths[i++] - wb);
+            let s = paramValues.segments;
+            let xb = d[edges[i][0]][0] * scaleDim + ox;
+            let yb = d[edges[i][0]][1] * scaleDim + oy;
+            let wb = widths[edges[i][0]];
+            let xs = d[edges[i][1]][0] * scaleDim + ox - xb;
+            let ys = d[edges[i][1]][1] * scaleDim + oy - yb;
+            let ws = widths[edges[i][1]];
             x.beginPath()
-            x.strokeStyle = 'white'
+            x.strokeStyle = 'rgb(' + edges[i][2] + ',' + edges[i][3] + ',' + edges[i][4] + ')';
             x.moveTo(xb, yb);
             while (s--) {
-                sc = 1 - (s / paramValues["segments"])
+                sc = 1 - (s / paramValues.segments)
                 x.lineWidth = wb + sc * ws;
                 x.lineTo(xb + sc * xs, yb + sc * ys)
                 x.stroke();
 
             }
+            i++;
         }
 
     }
+    let ot = (new Date()).getTime() / 1000;
     function l() {
-
-        u((new Date()).getTime() / 1000);
+        let t = (new Date()).getTime() / 1000;
+        dt = t - ot;
+        u(t, dt);
+        ot = t;
         requestAnimationFrame(l);
     }
     requestAnimationFrame(l);
