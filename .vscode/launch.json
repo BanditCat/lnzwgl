@@ -5,9 +5,15 @@
             "name": "Launch localhost",
             "type": "firefox",
             "request": "launch",
-            "reAttach": true,
-            "url": "http://localhost/main.html",
-            "webRoot": "${workspaceFolder}"
+            "reAttach": false,
+            "url": "http://localhost/teser.html",
+            "webRoot": "${workspaceFolder}",
+            "pathMappings": [
+                {
+                    "url": "http://localhost/teser.html",
+                    "path": "c:\\root\\code\\lnzwgl\\teser.html"
+                }
+            ]
         }
     ]
 }

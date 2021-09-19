@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>s/hyper/cyber/g</title>
+    <title>Cybergeometry</title>
     <script>
         codes = [`//////////////////////////////////////////////////////////////////////////
 /////////////////////////////////  HELP  /////////////////////////////////
@@ -31,8 +31,8 @@
 //                                                                      //
 // You can add extra parameters to the list of sliders like this   ↓    //
 //////////////////////////////////////////////////////////////////////////
-//        parameter name  display function          min  max  default  step
-params = {'saturation':   [v => "Saturation: " + v, 0,   1,   0.5,     0.01]}
+addParam({displayFunc:(v => "Saturation: " + v), name: "sat",
+         min: 0,   max: 1,   default: 0.5,     step: 0.01});
 
 
 // r generates the points of a cybercube
@@ -48,14 +48,17 @@ for (let i = 0; i < points.length / 2; ++i) {
     let y = x + 1;
     for (let d = 0; d < paramValues.dim; d++) {
         let p = [x, y];
-        p = p.concat(hsv2rgb((d / paramValues.dim + 12) * 360, paramValues.saturation, 1));
+        p = p.concat(hsv2rgb((d / paramValues.dim + 12) * 360, paramValues.sat, 1));
         edges.push(p);
         x = shl(x); y = shl(y);
     }
 }`,
-            `params = {'saturation':   [v => "Saturation: " + v,      0,   1,   0.5,     0.01],
-          'circleSegs':   [v => "Circle segments: " + v, 4,   20,   8,      1],
-          'slices':       [v => "Slices: " + v,          1,   20,   2,      1]}
+            `addParam({displayFunc:(v => "Saturation: " + v), name: "sat",
+          min: 0,   max: 1,   default: 0.5,     step: 0.01});            
+addParam({displayFunc:(v => "Circle segments: " + v), name: "circleSegs",
+          min: 3,   max: 64,   default: 16,     step: 1});            
+addParam({displayFunc:(v => "Slices: " + v), name: "slices",
+          min: 1,   max: 20,   default: 3,     step: 1});        
 
 for( let i = 0; i < paramValues.circleSegs; ++i ){
   
@@ -75,42 +78,38 @@ for( let d = 2; d < paramValues.dim; ++d ){
     let r = 2 * (i+0.5) / paramValues.slices - 1;
     let sc = Math.sqrt( 1 - r*r );
     newPoints = newPoints.concat( points.map( e => (e.map( (f, h) => (h == d ? r : sc*f)))));
-    newEdges = newEdges.concat( edges.map( e => (e.map( f => f + points.length * i))));
+    newEdges = newEdges.concat( edges.map( e => (e.map( f => f + newEdges.length ))));
   }
 }
-edges = newEdges;
-edges.forEach(e=>{while(e.length < 5)e.push(255)});
-points = newPoints;
-log( JSON.stringify( points ));
-`
+
+function rotate( a ){
+  let b = a.slice();
+  b.push( b.shift() );
+  return b;
+}
+
+
+if( newEdges.length ){
+  edges = newEdges; points = newPoints;
+  newPoints = []; newEdges = [];
+  for( let i = 0; i < paramValues.dim; ++i ){
+    newPoints = newPoints.concat( points );
+    points = points.map( e => rotate( e ) );
+    newEdges = newEdges.concat( edges.map( e => ([...e.map( f => f + newEdges.length ),...hsv2rgb(i * 360 / paramValues.dim,paramValues.sat,1)])));
+  }
+  edges = newEdges; points = newPoints;
+} else 
+edges.forEach(e=>{while(e.length < 5)e.push(255)});`,
+            `addParam({displayFunc:(v => "Saturation: " + v), name: "sat",
+          min: 0, max: 1, default: 0.5, step: 0.01});            
+addParam({displayFunc:(v => "Circle segments: " + v), name: "circleSegs",
+          min: 3, max: 64, default: 16, step: 1});            
+
+let sdim = Math.floor( paramValues.dim / 2 );
+for( let i = 0; i < sdim; ++i )
+  addParam({displayFunc:(v => "Radius " + i + ": " + v), name: "rad" + i,
+           min: 0, max: 2, default: (i+1) / sdim, step: 0.001});`
         ];
-        function wip() {
-            params = {
-                'saturation': [v => "Saturation: " + v, 0, 1, 0.5, 0.01],
-                'circleSegs': [v => "Circle segments: " + v, 4, 20, 8, 1]
-            }
-
-            for (let i = 0; i < paramValues.circleSegs; ++i) {
-
-                points.push([Math.sin(2 * Math.pi * i / paramValues.circleSegs),
-                Math.cos(2 * Math.pi * i / paramValues.circleSegs)]);
-                edges.push([i, (i + 1) % paramValues.circleSegs]);
-            }
-
-
-            // edges contains indices into points
-            edges = [];
-            for (let i = 0; i < points.length / 2; ++i) {
-                let x = i * 2;
-                let y = x + 1;
-                for (let d = 0; d < paramValues.dim; d++) {
-                    let p = [x, y];
-                    p = p.concat(hsv2rgb((d / paramValues.dim + 12) * 360, paramValues.saturation, 1));
-                    edges.push(p);
-                    x = shl(x); y = shl(y);
-                }
-            }
-        }
         let points = [];
         let edges = [];
         let params = [];
@@ -212,12 +211,9 @@ log( JSON.stringify( points ));
             border-width: var(--borderWidth);
             border-color: var(--border);
             box-sizing: border-box;
-            display: inline-block;
             float: left;
-
         }
 
-        #editDiv {}
 
         #edit {
             resize: none;
@@ -239,12 +235,6 @@ log( JSON.stringify( points ));
             font-family: monospaced;
 
         }
-
-        .errord {
-            color: var(--errorColor);
-            font-weight: bold;
-
-        }
     </style>
 </head>
 
@@ -253,14 +243,13 @@ log( JSON.stringify( points ));
     <canvas id="c" width="100%" height="100%"></canvas>
     <div id="panel"></div>
     <script>
-        const startDim = 4;
+        let axes = [];
         let axesCombos = [];
         let rotations = [];
         let axesIndices = [];
-        function incAxes() {
-            upd("rotAxes", (paramValues.rotAxes + 1) % (parseFloat(document.getElementById("rotAxes").max) + 1) + "");
-        }
         function redim(v) {
+            if (!v)
+                v = paramValues.dim;
             let combine = (a) => a.flatMap((e, i) => a.filter((f, j) => j > i).map(g => [e, g]));
             axes = combine([...Array(v).keys()]);
             axesCombos = combine(axes);
@@ -273,12 +262,11 @@ log( JSON.stringify( points ));
                 document.getElementById("rotAxes").max = axesCombos.length - 1;
                 upd("rotAxes", 0);
             }
-            if (document.getElementById("message"))
-                run();
+            run();
         }
         function axisname(x) {
 
-            if (paramValues.dim == 2) {
+            if (paramValues.dim == 2 || axesCombos.length == 0) {
                 return "xy";
             } else {
                 const axisString = "xyzwuvtsrqponmlkjihgfedcba";
@@ -286,7 +274,7 @@ log( JSON.stringify( points ));
             }
         }
         let presetParams = {
-            'dim': [v => (redim(parseFloat(v)), "Dimension: " + v), 2, 8, 4, 1],
+            'dim': [v => "Dimension: " + v, 2, 8, 4, 1],
             'lineWidth': [v => "Line width: " + v, 0.01, 4, 1, 0.001],
             'dist': [v => "Distance: " + v, 1, 5, 1.2, 0.001],
             'zoom': [v => "Zoom: " + v, 0, 1.5, 1, 0.001],
@@ -297,67 +285,74 @@ log( JSON.stringify( points ));
         let paramValues = {}
         Object.keys(presetParams).forEach(e => paramValues[e] = presetParams[e][3]);
         function upd(id, value, controled) {
-            paramValues[id] = parseFloat(value);
-            document.getElementById(id + 'Label').innerHTML = (presetParams[id] ? presetParams[id] : params[id])[0](value);
+            let nv = parseFloat(value);
+            ov = paramValues.dim;
+            paramValues[id] = nv;
+            document.getElementById(id + 'Label').innerHTML = (presetParams[id] ? presetParams[id] : params[id])[0](nv);
             if (!controled) {
                 document.getElementById(id).value = value;
             }
-            if (params[id]) {
+            if (id == "dim" && ov != nv) {
+                redim(nv);
+            } else if (params[id]) {
                 run();
             }
         }
 
         let s = "";
+        function genControl(i, pars) {
+            let e = pars[i];
+            return '<div class="control" id="' + i + "div" + '"><label id="' + i + 'Label" class="left" for="' + i + '">' + e[0](paramValues[i]) + '</label>' +
+                '<input oninput="upd(' + "'" + i + "'," + 'this.value,true)" id="' + i + '"type="range" min="' + e[1] + '"" max="' + e[2] + '" value="' + paramValues[i] + '" step="' + e[4] + '"class="slider" id="myRange"></div>';
+        }
         function repanel() {
             let code = document.getElementById("edit");
-            let pars = { ...presetParams, ...params };
             let s = "";
-            Object.keys(pars).forEach(i => {
-                let e = pars[i];
-                s += '<div class="control"><label id="' + i + 'Label" class="left" for="' + i + '">' + e[0](e[3]) + '</label>';
-                s += '<input oninput="upd(' + "'" + i + "'," + 'this.value,true)" id="' + i + '"type="range" min="' + e[1] + '"" max="' + e[2] + '" value="' + e[3] + '" step="' + e[4] + '"class="slider" id="myRange"></div>';
+            Object.keys(presetParams).forEach(i => {
+                s += genControl(i, presetParams)
             });
-            s += '<div><label for="codeSelect">Code:</label>' +
+            s += '<div id="customParameters"></div><div><label for="codeSelect">Code:</label>' +
                 '<select name="codes" id = "codeSelect" >' +
                 '<option value="0">Cybercube</option>' +
-                '<option value="1">Axes</option>' +
-                '<option value="2">Cyberball</option>' +
-                '<option value="3">Cybertorus</option>' +
+                '<option value="1">Cybersphere</option>' +
+                '<option value="2">Cybertorus</option>' +
                 '</select></div>';
             s += '<textarea rows="20" spellcheck="false" id="edit"></textarea><p id="message"></p>'
             let tv = document.getElementById("codeSelect") ? document.getElementById("codeSelect").value : 0;
             document.getElementById("panel").innerHTML = s;
             document.getElementById("codeSelect").value = tv;
-            document.getElementById("codeSelect").value = tv || 0;
 
             document.getElementById("edit").value = code ? code.value : codes[0];
 
-            redim(startDim);
 
-            Object.keys(params).forEach(e => paramValues[e] = (paramValues[e] ? paramValues[e] : params[e][3]));
-            Object.keys(paramValues).forEach(e => {
-                if (document.getElementById(e) != null)
-                    document.getElementById(e).value = paramValues[e];
-            })
             document.getElementById("codeSelect").onchange = ev => {
                 document.getElementById("edit").value = codes[ev.target.value];
-                upd("dim", startDim);
-                redim(startDim);
-                repanel();
+                run();
             }
             document.onkeydown = ev => {
                 if (ev.key == "Enter" && ev.ctrlKey) {
-                    upd("dim", startDim);
-                    redim(startDim);
-                    repanel();
+                    run();
                 }
             }
+            redim();
         }
-        function log(v) {
+        function log(v, color) {
             document.getElementById("message").style.display = 'block';
-            document.getElementById("message").innerHTML = v;
+            document.getElementById("message").innerText = v;
+            if (document.getElementById("message").innerText == "")
+                document.getElementById("message").style.display = 'none';
+            document.getElementById("message").style.color = color ? color : "var(--fg)";
+
+        }
+        function addParam(o, reset) {
+            params[o.name] = [o.displayFunc, o.min, o.max, o.default, o.step];
+            if (paramValues[o.name] == null)
+                paramValues[o.name] = o.default;
+            if (!document.getElementById(o.name))
+                document.getElementById("customParameters").innerHTML += genControl(o.name, params);
         }
         function run() {
+            let oparams = params;
             params = [];
             points = [];
             edges = [];
@@ -365,13 +360,14 @@ log( JSON.stringify( points ));
                 log("");
                 let create = Function(document.getElementById("edit").value);
                 create();
-                if (document.getElementById("message").innerHTML == "")
-                    document.getElementById("message").style.display = 'none';
             } catch (err) {
-                log("<span class='errord'>Error: </span>" + err.message);
+                log(err.message, "red");
             }
+            for (i in oparams)
+                if (!params[i])
+                    document.getElementById(i + "div").remove();
         }
-        repanel(); repanel();
+        repanel();
 
     </script>
 </body>
@@ -404,33 +400,35 @@ log( JSON.stringify( points ));
     }
     window.onresize = resize;
     resize();
-    resize();
     let axesHandle = 0;
     function rclickListener(ev) {
         ev.preventDefault();
         return false;
     }
     c.addEventListener('contextmenu', rclickListener, false);
-    c.onclick = c.ondblclick = c.onmousemove = c.onmousedown = (ev) => {
-        if (document.pointerLockElement) {
-            let mdim = Math.sqrt(c.width * c.width + c.height * c.height);
-            let mx = ev.movementX * 0.003;
-            let my = ev.movementY * 0.003;
-            if (ev.buttons & 2)
-                document.exitPointerLock();
-            if (ev.buttons & 1) {
-                if (paramValues.dim > 2) {
-                    axesHandle = (axesHandle + mx * axesCombos.length) % axesCombos.length + axesCombos.length;
-                    upd("rotAxes", Math.floor(axesHandle - axesCombos.length) + "");
+    {
+        let lastbuttons = 0;
+        c.onclick = c.ondblclick = c.onmousemove = c.onmousedown = c.onmouseup = (ev) => {
+            if (document.pointerLockElement) {
+                let mdim = Math.sqrt(c.width * c.width + c.height * c.height);
+                let mx = ev.movementX * 0.003;
+                let my = ev.movementY * 0.003;
+                if (ev.buttons & 2)
+                    document.exitPointerLock();
+                if (ev.buttons & 1) {
+                    if (paramValues.dim > 2) {
+                        axesHandle = (axesHandle + mx * axesCombos.length) % axesCombos.length + axesCombos.length;
+                        upd("rotAxes", Math.floor(axesHandle - axesCombos.length) + "");
+                    }
+                } else {
+                    let ai = axesIndices[paramValues.rotAxes] || [0, 0];
+                    rotations[ai[0]] += mx;
+                    rotations[ai[1]] += my;
                 }
-            } else {
-                let ai = axesIndices[paramValues.rotAxes] || [0, 0];
-                rotations[ai[0]] += mx;
-                rotations[ai[1]] += my;
-            }
-        } else if (ev.buttons & 1)
-            c.requestPointerLock();
-
+            } else if (lastbuttons & 1 && ev.type == "mouseup")
+                c.requestPointerLock();
+            lastbuttons = ev.buttons;
+        }
     }
     function u(time, delta) {
         x.clearRect(0, 0, c.width, c.height);
