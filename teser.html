@@ -3,29 +3,42 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Hypergeometry</title>
+    <title>s/hyper/cyber/g</title>
     <script>
-        codes = [`
-// you can add extra parameters to the list of sliders like this
+        codes = [`//////////////////////////////////////////////////////////////////////////
+/////////////////////////////////  HELP  /////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+// Click the object to control with the mouse. Right click to release.  //
+// The variables points and edges must be set by this function.         //
+// Pressing ctrl-enter attempts to run the script diplayed here.        //
+// Click and drag horizontally to change the axes of rotation.          //
+//                                                                      //
+// Available functions:                                                 //
+//   hsv2rgb( h, s, v )                                                 //
+//     Takes a hue between 0 and 360, and a saturation and value        //
+//     between 0 and 1, and converts it into a 3 element rgb array      //
+//   shl( x, hightbit )                                                 //
+//     This returns x shifted left one bit (i.e. divided by two),       //
+//     and adds highbit if the low bit was set.                         //
+//   log( msg )                                                         //
+//     It's better than bad, it's good!                                 //
+//                                                                      //
+// Uncomment these lines to get a list of variables accesible 
+// through paramValues.
+// { let s = ""; for(const o in paramValues) 
+//                 s += 'paramValues.' + o + ' = ' + paramValues[o] + '\\n'; 
+//  if( document.getElementById("message").innerHTML == "" ) log(s); }
+//                                                                      //
+// You can add extra parameters to the list of sliders like this   ↓    //
+//////////////////////////////////////////////////////////////////////////
+//        parameter name  display function          min  max  default  step
+params = {'saturation':   [v => "Saturation: " + v, 0,   1,   0.5,     0.01]}
 
-//        parameter name    display function            min   max  default  step
-params = {'saturation':     [v => "Saturation: " + v,   1,    10,  3,       1]}
 
-
-// r generates the points of a hypercube
+// r generates the points of a cybercube
 let q = (v, l) => l.map((i) => i.concat([v]))
 let r = (n, l) => n ? r(n - 1, q(-1, l).concat(q(1, l))) : l
 points = r(paramValues.dim, [[]]);
-
-
-// function to rotate bits
-function shl(x, highBit) {
-    let b = x & 1;
-    x >>= 1;
-    if (b)
-        x += points.length / 2;
-    return x;
-}
 
 
 // edges contains indices into points
@@ -35,14 +48,79 @@ for (let i = 0; i < points.length / 2; ++i) {
     let y = x + 1;
     for (let d = 0; d < paramValues.dim; d++) {
         let p = [x, y];
-        p = p.concat(hsv2rgb((d / paramValues.dim + 12) * 360, 0.3, 1));
+        p = p.concat(hsv2rgb((d / paramValues.dim + 12) * 360, paramValues.saturation, 1));
         edges.push(p);
         x = shl(x); y = shl(y);
     }
 }`,
-            "jchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEVjchv abjvcbajuvAJU\nGEVFUJfwmkahDBKJHSCXBJUBUjbvqwuvWDEJVJ\nWQEV"]
+            `params = {'saturation':   [v => "Saturation: " + v,      0,   1,   0.5,     0.01],
+          'circleSegs':   [v => "Circle segments: " + v, 4,   20,   8,      1],
+          'slices':       [v => "Slices: " + v,          1,   20,   2,      1]}
+
+for( let i = 0; i < paramValues.circleSegs; ++i ){
+  
+  points.push( [Math.sin(2*Math.PI*i/paramValues.circleSegs),
+                Math.cos(2*Math.PI*i/paramValues.circleSegs)] );
+  edges.push( [i,(i+1)%paramValues.circleSegs] );
+}
+
+
+
+let newPoints = [];
+let newEdges = [];
+points.forEach(e=>{while(e.length < paramValues.dim)e.push(0)});
+
+for( let d = 2; d < paramValues.dim; ++d ){
+  for( let i = 0; i < paramValues.slices; ++i ){
+    let r = 2 * (i+0.5) / paramValues.slices - 1;
+    let sc = Math.sqrt( 1 - r*r );
+    newPoints = newPoints.concat( points.map( e => (e.map( (f, h) => (h == d ? r : sc*f)))));
+    newEdges = newEdges.concat( edges.map( e => (e.map( f => f + points.length * i))));
+  }
+}
+edges = newEdges;
+edges.forEach(e=>{while(e.length < 5)e.push(255)});
+points = newPoints;
+log( JSON.stringify( points ));
+`
+        ];
+        function wip() {
+            params = {
+                'saturation': [v => "Saturation: " + v, 0, 1, 0.5, 0.01],
+                'circleSegs': [v => "Circle segments: " + v, 4, 20, 8, 1]
+            }
+
+            for (let i = 0; i < paramValues.circleSegs; ++i) {
+
+                points.push([Math.sin(2 * Math.pi * i / paramValues.circleSegs),
+                Math.cos(2 * Math.pi * i / paramValues.circleSegs)]);
+                edges.push([i, (i + 1) % paramValues.circleSegs]);
+            }
+
+
+            // edges contains indices into points
+            edges = [];
+            for (let i = 0; i < points.length / 2; ++i) {
+                let x = i * 2;
+                let y = x + 1;
+                for (let d = 0; d < paramValues.dim; d++) {
+                    let p = [x, y];
+                    p = p.concat(hsv2rgb((d / paramValues.dim + 12) * 360, paramValues.saturation, 1));
+                    edges.push(p);
+                    x = shl(x); y = shl(y);
+                }
+            }
+        }
         let points = [];
         let edges = [];
+        let params = [];
+        function shl(x, highBit) {
+            let b = x & 1;
+            x >>= 1;
+            if (b)
+                x += points.length / 2;
+            return x;
+        }
         function hsv2rgb(h, s, v) {
             function f(n) {
                 let k = (n + h / 60) % 6;
@@ -220,57 +298,81 @@ for (let i = 0; i < points.length / 2; ++i) {
         Object.keys(presetParams).forEach(e => paramValues[e] = presetParams[e][3]);
         function upd(id, value, controled) {
             paramValues[id] = parseFloat(value);
-            document.getElementById(id + 'Label').innerHTML = presetParams[id][0](value);
+            document.getElementById(id + 'Label').innerHTML = (presetParams[id] ? presetParams[id] : params[id])[0](value);
             if (!controled) {
                 document.getElementById(id).value = value;
+            }
+            if (params[id]) {
+                run();
             }
         }
 
         let s = "";
         function repanel() {
-            Object.keys(presetParams).forEach(i => {
-                let e = presetParams[i];
+            let code = document.getElementById("edit");
+            let pars = { ...presetParams, ...params };
+            let s = "";
+            Object.keys(pars).forEach(i => {
+                let e = pars[i];
                 s += '<div class="control"><label id="' + i + 'Label" class="left" for="' + i + '">' + e[0](e[3]) + '</label>';
                 s += '<input oninput="upd(' + "'" + i + "'," + 'this.value,true)" id="' + i + '"type="range" min="' + e[1] + '"" max="' + e[2] + '" value="' + e[3] + '" step="' + e[4] + '"class="slider" id="myRange"></div>';
             });
             s += '<div><label for="codeSelect">Code:</label>' +
                 '<select name="codes" id = "codeSelect" >' +
-                '<option value="0">Hypercube</option>' +
+                '<option value="0">Cybercube</option>' +
                 '<option value="1">Axes</option>' +
-                '<option value="2">Hyperball</option>' +
-                '<option value="3">Hypertorus</option>' +
+                '<option value="2">Cyberball</option>' +
+                '<option value="3">Cybertorus</option>' +
                 '</select></div>';
             s += '<textarea rows="20" spellcheck="false" id="edit"></textarea><p id="message"></p>'
-
+            let tv = document.getElementById("codeSelect") ? document.getElementById("codeSelect").value : 0;
             document.getElementById("panel").innerHTML = s;
-            document.getElementById("edit").value = codes[0];
-            run();
+            document.getElementById("codeSelect").value = tv;
+            document.getElementById("codeSelect").value = tv || 0;
+
+            document.getElementById("edit").value = code ? code.value : codes[0];
+
+            redim(startDim);
+
+            Object.keys(params).forEach(e => paramValues[e] = (paramValues[e] ? paramValues[e] : params[e][3]));
+            Object.keys(paramValues).forEach(e => {
+                if (document.getElementById(e) != null)
+                    document.getElementById(e).value = paramValues[e];
+            })
+            document.getElementById("codeSelect").onchange = ev => {
+                document.getElementById("edit").value = codes[ev.target.value];
+                upd("dim", startDim);
+                redim(startDim);
+                repanel();
+            }
+            document.onkeydown = ev => {
+                if (ev.key == "Enter" && ev.ctrlKey) {
+                    upd("dim", startDim);
+                    redim(startDim);
+                    repanel();
+                }
+            }
         }
-        repanel();
-        redim(startDim);
         function log(v) {
             document.getElementById("message").style.display = 'block';
             document.getElementById("message").innerHTML = v;
         }
         function run() {
+            params = [];
+            points = [];
+            edges = [];
             try {
+                log("");
                 let create = Function(document.getElementById("edit").value);
                 create();
-                log("");
-                document.getElementById("message").style.display = 'none';
+                if (document.getElementById("message").innerHTML == "")
+                    document.getElementById("message").style.display = 'none';
             } catch (err) {
                 log("<span class='errord'>Error: </span>" + err.message);
             }
+        }
+        repanel(); repanel();
 
-        }
-        document.getElementById("codeSelect").onchange = ev => {
-            document.getElementById("edit").value = codes[ev.target.value];
-            run();
-        }
-        document.onkeydown = ev => {
-            if (ev.key == "Enter" && ev.ctrlKey)
-                run();
-        }
     </script>
 </body>
 
@@ -349,15 +451,16 @@ for (let i = 0; i < points.length / 2; ++i) {
             p = rot(p, e, axes[i][0], axes[i][1]);
         });
 
-        while (p[0].length > 3)
-            p = dd(p);
-        if (p[0].length == 3) {
-            widths = p.map((i) => 10 * paramValues.lineWidth / (i[0] + mdist))
-            p = dd(p);
-        } else
-            widths = p.map((i) => paramValues.lineWidth);
-        d = p.map((i) => (i.map((j) => j * 0.5 * mzoom)));
-
+        if (p[0]) {
+            while (p[0].length > 3)
+                p = dd(p);
+            if (p[0].length == 3) {
+                widths = p.map((i) => 10 * paramValues.lineWidth / (i[0] + mdist))
+                p = dd(p);
+            } else
+                widths = p.map((i) => paramValues.lineWidth);
+            d = p.map((i) => (i.map((j) => j * 0.5 * mzoom)));
+        }
 
 
 
@@ -371,14 +474,14 @@ for (let i = 0; i < points.length / 2; ++i) {
             let wb = widths[edges[i][0]];
             let xs = d[edges[i][1]][0] * scaleDim + ox - xb;
             let ys = d[edges[i][1]][1] * scaleDim + oy - yb;
-            let ws = widths[edges[i][1]];
-            x.beginPath()
-            x.strokeStyle = 'rgb(' + edges[i][2] + ',' + edges[i][3] + ',' + edges[i][4] + ')';
+            let ws = widths[edges[i][1]] - wb;
             x.moveTo(xb, yb);
-            while (s--) {
-                sc = 1 - (s / paramValues.segments)
+            x.strokeStyle = 'rgb(' + edges[i][2] + ',' + edges[i][3] + ',' + edges[i][4] + ')';
+            x.beginPath();
+            for (s = 0; s <= paramValues.segments; ++s) {
+                let sc = 1 - (s / paramValues.segments);
                 x.lineWidth = wb + sc * ws;
-                x.lineTo(xb + sc * xs, yb + sc * ys)
+                x.lineTo(xb + sc * xs, yb + sc * ys);
                 x.stroke();
 
             }
