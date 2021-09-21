@@ -100,33 +100,61 @@ if( newEdges.length ){
   edges = newEdges; points = newPoints;
 } else 
 edges.forEach(e=>{while(e.length < 5)e.push(255)});`,
+            `
+slider.add({displayFunc:(v => "Saturation: " + v), name: "sat",
+          min: 0, max: 1, default: 0.5, step: 0.01});            
+slider.add({displayFunc:(v => "Grid segments: " + v), name: "gridSegs",
+          min: 3, max: 16, default: 4, step: 1});            
+
+let s = slider.gridSegs;
+let nedges = [];
+let npoints = points = [...Array(s).keys()].map( e => [e * 2 / (s-1) - 1] );
+edges = [[0,s-1]];
+for( let d = 1; d < slider.dim; ++d ){ 
+  npoints = npoints.flatMap( e => points.map( f => e.concat( f )));
+  edges = [...Array(s).keys()].flatMap( e => edges.map( f => f.map( g => g + e*s*edges.length )))
+
+}
+
+let fmod = x => Math.floor( x / s ) + ( x % s ) * ( s ** (slider.dim -1));
+nedges = [];
+for( let d = 0; d < slider.dim; ++d ){ 
+  nedges = nedges.concat(edges.map( e => e.concat( hsv2rgb(d * 360 / slider.dim,slider.sat,1))));
+  edges = edges.map( (e,k) => [fmod(e[0]),fmod(e[1])]);
+}
+edges = nedges;
+points = npoints;
+`,
             `slider.add({displayFunc:(v => "Saturation: " + v), name: "sat",
           min: 0, max: 1, default: 0.5, step: 0.01});            
 slider.add({displayFunc:(v => "Circle segments: " + v), name: "circleSegs",
-          min: 3, max: 64, default: 16, step: 1});            
+          min: 3, max: 16, default: 4, step: 1});            
 
 let sdim = Math.floor( slider.dim / 2 );
 for( let i = 0; i < sdim; ++i )
   slider.add({displayFunc:(v => "Radius " + i + ": " + v), name: "rad" + i,
            min: 0, max: 2, default: (i+1) / sdim, step: 0.001}, true);
 
-let s = 3;
-
-npoints = points = [...Array(s).keys()].map( e => [e / (s-1)] );
+let s = slider.circleSegs;
+let nedges = [];
+let npoints = points = [...Array(s).keys()].map( e => [e / (s-1)] );
 edges = [...Array(s).keys()].map( e => [e, (e+1) % s] );
 for( let d = 1; d < slider.dim; ++d ){ 
   npoints = npoints.flatMap( e => points.map( f => e.concat( f )));
   nedges = [...Array(s).keys()].flatMap( e => edges.map( f => f.map( g => g + e*edges.length )))
-  edges = nedges//.map( f => [f[0],(f[0]+edges.length)%nedges.length] );
+  edges = nedges.map( f => [f[0],(f[0]+edges.length)%nedges.length] );
 
 }
-let fmod = x => Math.floor( x / s ) + ( x % s ) * ( s ** 2 );
-edges = edges.map( (e,k) => [fmod(e[0]),fmod(e[1]))%edges.length]);
+let fmod = x => Math.floor( x / s ) + ( x % s ) * ( s ** (slider.dim -1));
+nedges = [];
+for( let d = 0; d < slider.dim; ++d ){ 
+  nedges = nedges.concat(edges);
+  edges = edges.map( (e,k) => [fmod(e[0]),fmod(e[1])]);
+}
+edges = nedges;
 points = npoints;
-log( JSON.stringify( points ) + "\n" + JSON.stringify( edges ) );
-edges.forEach( e => { while( e.length < 5 ){ e.push( 255 ); } } )
-
-`
+log( JSON.stringify( points ) + "\\n" + JSON.stringify( edges ) );
+edges.forEach( e => { while( e.length < 5 ){ e.push( 255 ); } } )`
         ];
         let points = [];
         let edges = [];
@@ -342,7 +370,8 @@ edges.forEach( e => { while( e.length < 5 ){ e.push( 255 ); } } )
                 '<select name="codes" id = "codeSelect" >' +
                 '<option value="0">Cybercube</option>' +
                 '<option value="1">Cybersphere</option>' +
-                '<option value="2">Cybertorus</option>' +
+                '<option value="2">Cybergrid</option>' +
+                '<option value="3">Cybertorus</option>' +
                 '</select></div>';
             s += '<textarea rows="20" spellcheck="false" id="edit"></textarea><p id="message"></p>'
             let tv = document.getElementById("codeSelect") ? document.getElementById("codeSelect").value : 0;
@@ -390,10 +419,16 @@ edges.forEach( e => { while( e.length < 5 ){ e.push( 255 ); } } )
         function errmsg(err) {
             let ls = document.getElementById("edit").value.split(/\r?\n/);
             let l = ls[err.lineNumber];
-            l = l.substr(0, err.columnNumber) + "  <span style='color: var(--errorColor)'>-->error here<--</span>  " + l.substr(err.columnNumber);
-            l = (ls[err.lineNumber - 1] ? ls[err.lineNumber - 1] : "") + "\n" + l + "\n" + (ls[err.lineNumber + 1] ? ls[err.lineNumber + 1] : "");
+            let l1 = (ls[err.lineNumber - 1] ? ls[err.lineNumber - 1] : "") + "\n" + l.substr(0, err.columnNumber);
+            let l2 = l.substr(err.columnNumber) + "\n" + (ls[err.lineNumber + 1] ? ls[err.lineNumber + 1] : "");
 
-            log("<span style='color: var(--errorColor)'>Error! " + err.lineNumber + ":" + err.columnNumber + "</span><br><br><code style='white-space: pre-line;'>" + l + "</code><br><br><span style='color: var(--errorColor)'>" + err.message + "<br>" + err.stack + "</span>");
+            log("<span style='color: var(--errorColor)'>Error! " + err.lineNumber + ":" + err.columnNumber + "</span><br><br><code style='white-space: pre-line;'>" +
+                "<span id='errmsgL1'></span><span style='color: var(--errorColor)'>-->error here<--</span><span id='errmsgL2'></span>" +
+                "</span><br><br><span style='color: var(--errorColor)'><span id='errmsgMessage'></span>\n\nStack:\n<span id='errmsgStack'></span></span></code>");
+            document.getElementById("errmsgMessage").innerText = err.message;
+            document.getElementById("errmsgStack").innerText = err.stack;
+            document.getElementById("errmsgL1").innerText = l1;
+            document.getElementById("errmsgL2").innerText = l2;
         }
         slider.add = addParam;
         function run() {
