@@ -36,7 +36,7 @@ slider.add({displayFunc:(v => "Saturation: " + v), name: "sat",
 
 
 // r generates the points of a cybercube
-let q = (v, l) => l.map((i) => i.concat([v]))
+let q = (v, l) => l.map((i) => i.concat([v]));
 let r = (n, l) => n ? r(n - 1, q(-1, l).concat(q(1, l))) : l
 points = r(slider.dim, [[]]);
 
@@ -128,37 +128,56 @@ points = npoints;
             `slider.add({displayFunc:(v => "Saturation: " + v), name: "sat",
           min: 0, max: 1, default: 0.5, step: 0.01});            
 slider.add({displayFunc:(v => "Circle segments: " + v), name: "circleSegs",
-          min: 3, max: 16, default: 4, step: 1});            
+          min: 3, max: 64, default: 4, step: 1});            
 
-let sdim = Math.floor( slider.dim / 2 );
+let sdim = Math.floor( (slider.dim + 1 ) / 2 );
+let even = slider.dim % 2 == 0;
 for( let i = 0; i < sdim; ++i )
   slider.add({displayFunc:(v => "Radius " + i + ": " + v), name: "rad" + i,
            min: 0, max: 2, default: (i+1) / sdim, step: 0.001}, true);
 
 let s = slider.circleSegs;
 let nedges = [];
-let npoints = points = [...Array(s).keys()].map( e => [e / (s-1)] );
+let npoints = points = [...Array(s).keys()].map( e => [e * 2 / (s) - 1] );
 edges = [...Array(s).keys()].map( e => [e, (e+1) % s] );
-for( let d = 1; d < slider.dim; ++d ){ 
+for( let d = 1; d < sdim; ++d ){ 
   npoints = npoints.flatMap( e => points.map( f => e.concat( f )));
   nedges = [...Array(s).keys()].flatMap( e => edges.map( f => f.map( g => g + e*edges.length )))
   edges = nedges.map( f => [f[0],(f[0]+edges.length)%nedges.length] );
 
 }
-let fmod = x => Math.floor( x / s ) + ( x % s ) * ( s ** (slider.dim -1));
+let fmod = x => Math.floor( x / s ) + ( x % s ) * ( s ** (sdim -1));
 nedges = [];
-for( let d = 0; d < slider.dim; ++d ){ 
-  nedges = nedges.concat(edges);
+for( let d = 0; d < sdim; ++d ){ 
+  nedges = nedges.concat(edges.map( e => e.concat( hsv2rgb(d * 360 / slider.dim,slider.sat,1))));
   edges = edges.map( (e,k) => [fmod(e[0]),fmod(e[1])]);
 }
 edges = nedges;
 points = npoints;
-log( JSON.stringify( points ) + "\\n" + JSON.stringify( edges ) );
-edges.forEach( e => { while( e.length < 5 ){ e.push( 255 ); } } )`
+
+let str = "";
+points = points.map( element => 
+  element.flatMap( (e,k) => {
+    let r = slider["rad"+k];
+    return even || k < sdim - 1 ? [r*Math.sin(Math.PI*e),r*Math.cos(Math.PI*e)] : [e];
+  })
+);
+
+if( !even )
+  points = points.map( element => {
+    let r = slider["rad"+(sdim-1)];
+    let r2 = slider["rad"+(sdim-2)];
+    return element.map( (e,k) => {
+      let le = Math.PI * element[ element.length - 1 ];
+      return (k == slider.dim-1 ? r2 * Math.sin( le ) : e * ( r2 + r * Math.cos( le ) ) );
+    });
+  });`
         ];
         let points = [];
         let edges = [];
         let params = [];
+        let center = [[0]];
+        let scale = 1;
         function shl(x, highBit) {
             let b = x & 1;
             x >>= 1;
@@ -324,7 +343,7 @@ edges.forEach( e => { while( e.length < 5 ){ e.push( 255 ); } } )`
             'lineWidth': [v => "Line width: " + v, 0.01, 4, 1, 0.001],
             'dist': [v => "Distance: " + v, 1, 5, 1.2, 0.001],
             'zoom': [v => "Zoom: " + v, 0, 1.5, 1, 0.001],
-            'segments': [v => "Line segments: " + v, 1, 10, 3, 1],
+            'segments': [v => "Line segments: " + v, 1, 10, 1, 1],
             'rotSpeed': [v => "Rotation speed: " + v, 0, 5, 1, 0.1],
             'rotAxes': [v => "Rotation axes: " + axisname(parseFloat(v), 4), 0, 0, 1, 1]
         }
@@ -350,7 +369,7 @@ edges.forEach( e => { while( e.length < 5 ){ e.push( 255 ); } } )`
             if (id == "dim" && ov != nv) {
                 redim(nv);
             } else if (params[id]) {
-                runnoparams();
+                run(true);
             }
         }
 
@@ -431,35 +450,30 @@ edges.forEach( e => { while( e.length < 5 ){ e.push( 255 ); } } )`
             document.getElementById("errmsgL2").innerText = l2;
         }
         slider.add = addParam;
-        function run() {
+        function run(noparams) {
             let oparams = params;
-            params = [];
+            if (!noparams)
+                params = [];
+            else
+                slider.add = (e, f) => true;
             points = [];
             edges = [];
             try {
                 log("");
                 let create = Function(document.getElementById("edit").value);
                 create();
+                center = points.reduce((v, nv) => v.map((e, k) => e + nv[k]));
+                scale = Math.sqrt(Math.max(...points.map(v => v.reduce((v2, nv2) => v2 + (nv2 * nv2), 0))));
+                points = points.map(e => e.map(f => f / scale));
             } catch (err) {
                 errmsg(err);
             }
-            for (i in oparams)
-                if (!params[i])
-                    document.getElementById(i + "div").remove();
-        }
-        function runnoparams() {
-            slider.add = (e, f) => true;
-            points = [];
-            edges = [];
-            try {
-                log("");
-                let create = Function(document.getElementById("edit").value);
-                create();
-            } catch (err) {
-                errmsg(err);
-            }
-            slider.add = addParam;
-
+            if (!noparams) {
+                for (i in oparams)
+                    if (!params[i])
+                        document.getElementById(i + "div").remove();
+            } else
+                slider.add = addParam;
         }
         repanel();
 
@@ -527,10 +541,9 @@ edges.forEach( e => { while( e.length < 5 ){ e.push( 255 ); } } )`
     function u(time, delta) {
         x.clearRect(0, 0, c.width, c.height);
         let scaleDim = Math.sqrt(c.width * c.width + c.height * c.height) / Math.sqrt(2);
-        let mdist = slider.dist * 1.1 * Math.sqrt(slider.dim);
-        let mzoom = 0.03 * (mdist ** (slider.zoom * slider.dim));
+        let mzoom = 0.1 * (2 ** (slider.zoom * slider.dim));
 
-        let dd = (l) => l.map((i) => i.map((v) => v / (i[0] + mdist))).map((i) => (i.shift(), i))
+        let dd = l => l.map(i => i.map((v) => v / (i[0] + slider.dist))).map((i) => (i.shift(), i));
         let rot = (l, t, a1, a2) => l.map((i) => i.map((v, j) => (j == a1 ? v * Math.cos(t) + i[a2] * Math.sin(t) : (j == a2 ? v * Math.cos(t) - i[a1] * Math.sin(t) : v))))
 
         if (!document.pointerLockElement)
@@ -547,7 +560,7 @@ edges.forEach( e => { while( e.length < 5 ){ e.push( 255 ); } } )`
             while (p[0].length > 3)
                 p = dd(p);
             if (p[0].length == 3) {
-                widths = p.map((i) => 10 * slider.lineWidth / (i[0] + mdist))
+                widths = p.map((i) => 10 * slider.lineWidth / (i[0] + slider.dist))
                 p = dd(p);
             } else
                 widths = p.map((i) => slider.lineWidth);
