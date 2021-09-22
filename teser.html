@@ -5,40 +5,49 @@
     <meta charset="utf-8">
     <title>Cybergeometry</title>
     <script>
-        codes = [`//////////////////////////////////////////////////////////////////////////
-/////////////////////////////////  HELP  /////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-// Click the object to control with the mouse. Right click to release.  //
-// The variables points and edges must be set by this function.         //
-// Pressing ctrl-enter attempts to run the script diplayed here.        //
-// Click and drag horizontally to change the axes of rotation.          //
-//                                                                      //
-// Available functions:                                                 //
-//   hsv2rgb( h, s, v )                                                 //
-//     Takes a hue between 0 and 360, and a saturation and value        //
-//     between 0 and 1, and converts it into a 3 element rgb array      //
-//   shl( x, hightbit )                                                 //
-//     This returns x shifted left one bit (i.e. divided by two),       //
-//     and adds highbit if the low bit was set.                         //
-//   log( msg )                                                         //
-//     It's better than bad, it's good!                                 //
-//                                                                      //
-// Uncomment these lines to get a list of variables accesible 
-// through slider.
-// { let s = ""; for(const o in slider) 
-//                 s += 'slider.' + o + ' = ' + slider[o] + '\\n'; 
-//  if( document.getElementById("message").innerHTML == "" ) log(s); }
-//                                                                      //
-// You can add extra parameters to the list of sliders like this   ↓    //
-//////////////////////////////////////////////////////////////////////////
-slider.add({displayFunc:(v => "Saturation: " + v), name: "sat",
-               min: 0, max: 1, default: 0.5, step: 0.01})
-
+        codes = [`////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////// HELP /////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// Click the object to control with the mouse.                                //
+// Press escape to release.                                                   //
+// Right click to move.                                                       //
+// Click and drag horizontally to change the axes of rotation.                //
+// Pressing ctrl-enter attempts to run the script diplayed here.              //
+//                                                                            //
+// The code here must create a function points to generate n-dimensional      //
+// points, a function edges that produces an array of pairs of indices into   //
+//  points. The function must also include a function edgeColors, with an rgb //
+// array for each edge, or a function pointColors, for per-vertex coloring.   //
+// An optional function, runOnce, may be included with a initialization       //
+// routine.                                                                   //
+//                                                                            //
+// Available functions:                                                       //
+//   hsv2rgb( h, s, v )                                                       //
+//     Takes a hue between 0 and 360, and a saturation and value              //
+//     between 0 and 1, and converts it into a 3 element rgb array            //
+//   shl( x, hightbit )                                                       //
+//     This returns x shifted left one bit (i.e. divided by two),             //
+//     and adds highbit if the low bit was set.                               //
+//   log( msg )                                                               //
+//     It's better than bad, it's good! msg may contain html.                 //
+//                                                                            //
+// Uncomment these lines to get a list of variables accesible                 //
+// through prmtr.
+// { let s = ""; for(const o in prmtr) 
+//                 s += 'prmtr.' + o + ' = ' + prmtr[o] + '<br>'; 
+//   log(s); }
+//                                                                            //
+// You can add extra parameters like this   ↓                                 //
+////////////////////////////////////////////////////////////////////////////////
+prmtr.add({displayFunc:(v => "Saturation: " + v), name: "sat", min: 0, max: 1,
+           default: 0.5, step: 0.01}); 
+// A boolean option
+prmtr.add({name: "diag", label: "Diagonals", default: false})
 
 // r generates the points of a cybercube
 let q = (v, l) => l.map((i) => i.concat([v]));
 let r = (n, l) => n ? r(n - 1, q(-1, l).concat(q(1, l))) : l
-points = r(slider.dim, [[]]);
+points = r(prmtr.dim, [[]]);
 
 
 // edges contains indices into points
@@ -46,36 +55,36 @@ edges = [];
 for (let i = 0; i < points.length / 2; ++i) {
     let x = i * 2;
     let y = x + 1;
-    for (let d = 0; d < slider.dim; d++) {
+    for (let d = 0; d < prmtr.dim; d++) {
         let p = [x, y];
-        p = p.concat(hsv2rgb((d / slider.dim + 12) * 360, slider.sat, 1));
+        p = p.concat(hsv2rgb((d / prmtr.dim + 12) * 360, prmtr.sat, 1));
         edges.push(p);
         x = shl(x); y = shl(y);
     }
 }`,
-            `slider.add({displayFunc:(v => "Saturation: " + v), name: "sat",
+            `prmtr.add({displayFunc:(v => "Saturation: " + v), name: "sat",
           min: 0,   max: 1,   default: 0.5,     step: 0.01});            
-slider.add({displayFunc:(v => "Circle segments: " + v), name: "circleSegs",
+prmtr.add({displayFunc:(v => "Circle segments: " + v), name: "circleSegs",
           min: 3,   max: 64,   default: 16,     step: 1});            
-slider.add({displayFunc:(v => "Slices: " + v), name: "slices",
+prmtr.add({displayFunc:(v => "Slices: " + v), name: "slices",
           min: 1,   max: 20,   default: 3,     step: 1});        
 
-for( let i = 0; i < slider.circleSegs; ++i ){
+for( let i = 0; i < prmtr.circleSegs; ++i ){
   
-  points.push( [Math.sin(2*Math.PI*i/slider.circleSegs),
-                Math.cos(2*Math.PI*i/slider.circleSegs)] );
-  edges.push( [i,(i+1)%slider.circleSegs] );
+  points.push( [Math.sin(2*Math.PI*i/prmtr.circleSegs),
+                Math.cos(2*Math.PI*i/prmtr.circleSegs)] );
+  edges.push( [i,(i+1)%prmtr.circleSegs] );
 }
 
 
 
 let newPoints = [];
 let newEdges = [];
-points.forEach(e=>{while(e.length < slider.dim)e.push(0)});
+points.forEach(e=>{while(e.length < prmtr.dim)e.push(0)});
 
-for( let d = 2; d < slider.dim; ++d ){
-  for( let i = 0; i < slider.slices; ++i ){
-    let r = 2 * (i+0.5) / slider.slices - 1;
+for( let d = 2; d < prmtr.dim; ++d ){
+  for( let i = 0; i < prmtr.slices; ++i ){
+    let r = 2 * (i+0.5) / prmtr.slices - 1;
     let sc = Math.sqrt( 1 - r*r );
     newPoints = newPoints.concat( points.map( e => (e.map( (f, h) => (h == d ? r : sc*f)))));
     newEdges = newEdges.concat( edges.map( e => (e.map( f => f + newEdges.length ))));
@@ -92,51 +101,51 @@ function rotate( a ){
 if( newEdges.length ){
   edges = newEdges; points = newPoints;
   newPoints = []; newEdges = [];
-  for( let i = 0; i < slider.dim; ++i ){
+  for( let i = 0; i < prmtr.dim; ++i ){
     newPoints = newPoints.concat( points );
     points = points.map( e => rotate( e ) );
-    newEdges = newEdges.concat( edges.map( e => ([...e.map( f => f + newEdges.length ),...hsv2rgb(i * 360 / slider.dim,slider.sat,1)])));
+    newEdges = newEdges.concat( edges.map( e => ([...e.map( f => f + newEdges.length ),...hsv2rgb(i * 360 / prmtr.dim,prmtr.sat,1)])));
   }
   edges = newEdges; points = newPoints;
 } else 
 edges.forEach(e=>{while(e.length < 5)e.push(255)});`,
             `
-slider.add({displayFunc:(v => "Saturation: " + v), name: "sat",
+prmtr.add({displayFunc:(v => "Saturation: " + v), name: "sat",
           min: 0, max: 1, default: 0.5, step: 0.01});            
-slider.add({displayFunc:(v => "Grid segments: " + v), name: "gridSegs",
+prmtr.add({displayFunc:(v => "Grid segments: " + v), name: "gridSegs",
           min: 3, max: 16, default: 4, step: 1});            
 
-let s = slider.gridSegs;
+let s = prmtr.gridSegs;
 let nedges = [];
 let npoints = points = [...Array(s).keys()].map( e => [e * 2 / (s-1) - 1] );
 edges = [[0,s-1]];
-for( let d = 1; d < slider.dim; ++d ){ 
+for( let d = 1; d < prmtr.dim; ++d ){ 
   npoints = npoints.flatMap( e => points.map( f => e.concat( f )));
   edges = [...Array(s).keys()].flatMap( e => edges.map( f => f.map( g => g + e*s*edges.length )))
 
 }
 
-let fmod = x => Math.floor( x / s ) + ( x % s ) * ( s ** (slider.dim -1));
+let fmod = x => Math.floor( x / s ) + ( x % s ) * ( s ** (prmtr.dim -1));
 nedges = [];
-for( let d = 0; d < slider.dim; ++d ){ 
-  nedges = nedges.concat(edges.map( e => e.concat( hsv2rgb(d * 360 / slider.dim,slider.sat,1))));
+for( let d = 0; d < prmtr.dim; ++d ){ 
+  nedges = nedges.concat(edges.map( e => e.concat( hsv2rgb(d * 360 / prmtr.dim,prmtr.sat,1))));
   edges = edges.map( (e,k) => [fmod(e[0]),fmod(e[1])]);
 }
 edges = nedges;
 points = npoints;
 `,
-            `slider.add({displayFunc:(v => "Saturation: " + v), name: "sat",
+            `prmtr.add({displayFunc:(v => "Saturation: " + v), name: "sat",
           min: 0, max: 1, default: 0.5, step: 0.01});            
-slider.add({displayFunc:(v => "Circle segments: " + v), name: "circleSegs",
+prmtr.add({displayFunc:(v => "Circle segments: " + v), name: "circleSegs",
           min: 3, max: 64, default: 4, step: 1});            
 
-let sdim = Math.floor( (slider.dim + 1 ) / 2 );
-let even = slider.dim % 2 == 0;
+let sdim = Math.floor( (prmtr.dim + 1 ) / 2 );
+let even = prmtr.dim % 2 == 0;
 for( let i = 0; i < sdim; ++i )
-  slider.add({displayFunc:(v => "Radius " + i + ": " + v), name: "rad" + i,
+  prmtr.add({displayFunc:(v => "Radius " + i + ": " + v), name: "rad" + i,
            min: 0, max: 2, default: (i+1) / sdim, step: 0.001}, true);
 
-let s = slider.circleSegs;
+let s = prmtr.circleSegs;
 let nedges = [];
 let npoints = points = [...Array(s).keys()].map( e => [e * 2 / (s) - 1] );
 edges = [...Array(s).keys()].map( e => [e, (e+1) % s] );
@@ -149,7 +158,7 @@ for( let d = 1; d < sdim; ++d ){
 let fmod = x => Math.floor( x / s ) + ( x % s ) * ( s ** (sdim -1));
 nedges = [];
 for( let d = 0; d < sdim; ++d ){ 
-  nedges = nedges.concat(edges.map( e => e.concat( hsv2rgb(d * 360 / slider.dim,slider.sat,1))));
+  nedges = nedges.concat(edges.map( e => e.concat( hsv2rgb(d * 360 / prmtr.dim,prmtr.sat,1))));
   edges = edges.map( (e,k) => [fmod(e[0]),fmod(e[1])]);
 }
 edges = nedges;
@@ -158,18 +167,18 @@ points = npoints;
 let str = "";
 points = points.map( element => 
   element.flatMap( (e,k) => {
-    let r = slider["rad"+k];
+    let r = prmtr["rad"+k];
     return even || k < sdim - 1 ? [r*Math.sin(Math.PI*e),r*Math.cos(Math.PI*e)] : [e];
   })
 );
 
 if( !even )
   points = points.map( element => {
-    let r = slider["rad"+(sdim-1)];
-    let r2 = slider["rad"+(sdim-2)];
+    let r = prmtr["rad"+(sdim-1)];
+    let r2 = prmtr["rad"+(sdim-2)];
     return element.map( (e,k) => {
       let le = Math.PI * element[ element.length - 1 ];
-      return (k == slider.dim-1 ? r2 * Math.sin( le ) : e * ( r2 + r * Math.cos( le ) ) );
+      return (k == prmtr.dim-1 ? r * r2 * Math.sin( le ) : e * ( r2 + r * Math.cos( le ) ) );
     });
   });`
         ];
@@ -211,7 +220,7 @@ if( !even )
             font-family: sans-serif;
         }
 
-        .slider {
+        .prmtr {
             -webkit-appearance: none;
             -webkit-transition: .2s;
             appearance: none;
@@ -225,11 +234,11 @@ if( !even )
             width: 60%;
         }
 
-        .slider:hover {
+        .prmtr:hover {
             opacity: 1;
         }
 
-        .slider::-webkit-slider-thumb {
+        .prmtr::-webkit-prmtr-thumb {
             -webkit-appearance: none;
             appearance: none;
             width: 1.25em;
@@ -241,7 +250,7 @@ if( !even )
             outline: none;
         }
 
-        .slider::-moz-range-thumb {
+        .prmtr::-moz-range-thumb {
             width: 1.5em;
             height: 1.5em;
             background: var(--control);
@@ -250,14 +259,25 @@ if( !even )
             outline: none;
         }
 
-        .slider::-moz-range-thumb:hover {
+        .prmtr::-moz-range-thumb:hover {
             background: #ffffff;
         }
 
         .control {
-            padding-bottom: 1em;
+            padding-bottom: 0.5em;
             font-weight: bolder;
             border: 0%;
+        }
+
+
+        #cbbar {
+            width: 100%;
+            padding-bottom: 0.5em;
+        }
+
+        .cbcontrol {
+            font-size: small;
+            padding-left: 1em;
         }
 
         #panel {
@@ -314,7 +334,7 @@ if( !even )
         let axesIndices = [];
         function redim(v) {
             if (!v)
-                v = slider.dim;
+                v = prmtr.dim;
             let combine = (a) => a.flatMap((e, i) => a.filter((f, j) => j > i).map(g => [e, g]));
             axes = combine([...Array(v).keys()]);
             axesCombos = combine(axes);
@@ -331,7 +351,7 @@ if( !even )
         }
         function axisname(x) {
 
-            if (slider.dim == 2 || axesCombos.length == 0) {
+            if (prmtr.dim == 2 || axesCombos.length == 0) {
                 return "xy";
             } else {
                 const axisString = "xyzwuvtsrqponmlkjihgfedcba";
@@ -340,35 +360,47 @@ if( !even )
         }
         let presetParams = {
             'dim': [v => "Dimension: " + v, 2, 8, 4, 1],
-            'lineWidth': [v => "Line width: " + v, 0.01, 4, 1, 0.001],
-            'dist': [v => "Distance: " + v, 1, 5, 1.2, 0.001],
-            'zoom': [v => "Zoom: " + v, 0, 1.5, 1, 0.001],
+            'lineWidth': [v => "Line width: " + v, 0.01, 5, 1, 0.001],
+            'dist': [v => "Distance: " + v, 1, 5, 1.5, 0.001],
+            'zoom': [v => "Zoom: " + v, 0, 2, 1, 0.001],
             'segments': [v => "Line segments: " + v, 1, 10, 1, 1],
             'rotSpeed': [v => "Rotation speed: " + v, 0, 5, 1, 0.1],
-            'rotAxes': [v => "Rotation axes: " + axisname(parseFloat(v), 4), 0, 0, 1, 1]
+            'rotAxes': [v => "Rotation axes: " + axisname(parseFloat(v), 4), 0, 0, 1, 1],
+            'autoRot': ["Autorotate", true],
+            'occlusion': ["Occlusion", true],
         }
-        let slider = {}
+        let prmtr = {}
         Object.keys(presetParams).forEach(e => {
-            slider[e + "val"] = presetParams[e][3];
-            Object.defineProperty(slider, e, {
+            if (presetParams[e].length == 2)
+                prmtr[e + "val"] = presetParams[e][1];
+            else
+                prmtr[e + "val"] = presetParams[e][3];
+            Object.defineProperty(prmtr, e, {
                 set: f => {
-                    slider[e + "val"] = f;
+                    prmtr[e + "val"] = f;
                     upd(e, f);
                 },
-                get: () => slider[e + "val"]
-            })
+                get: () => prmtr[e + "val"]
+            });
         });
         function upd(id, value, controled) {
-            let nv = parseFloat(value);
-            ov = slider.dim;
-            slider[id + "val"] = nv;
-            document.getElementById(id + 'Label').innerHTML = (presetParams[id] ? presetParams[id] : params[id])[0](nv);
-            if (!controled) {
-                document.getElementById(id).value = value;
+            if (document.getElementById(id).type == "checkbox") {
+                if (!controled)
+                    document.getElementById(id).checked = value;
+                prmtr[id + "val"] = value;
+            } else {
+                let nv = parseFloat(value);
+                ov = prmtr.dim;
+                prmtr[id + "val"] = nv;
+                document.getElementById(id + 'Label').innerHTML = (presetParams[id] ? presetParams[id] : params[id])[0](nv);
+                if (!controled) {
+                    document.getElementById(id).value = value;
+                }
+                if (id == "dim" && ov != nv) {
+                    redim(nv);
+                }
             }
-            if (id == "dim" && ov != nv) {
-                redim(nv);
-            } else if (params[id]) {
+            if (params[id]) {
                 run(true);
             }
         }
@@ -376,23 +408,32 @@ if( !even )
         let s = "";
         function genControl(i, pars) {
             let e = pars[i];
-            return '<div class="control" id="' + i + "div" + '"><label id="' + i + 'Label" class="left" for="' + i + '">' + e[0](slider[i]) + '</label>' +
-                '<input oninput="upd(' + "'" + i + "'," + 'this.value,true)" id="' + i + '"type="range" min="' + e[1] + '"" max="' + e[2] + '" value="' + slider[i] + '" step="' + e[4] + '"class="slider" id="myRange"></div>';
+            if (e.length == 2) {
+                return '<span class="cbcontrol" id="' + i + "div" + '"><label id="' + i + 'Label" class="left" for="' + i + '">' + e[0] + '</label>' +
+                    '<input oninput="upd(' + "'" + i + "'," + 'this.checked,true)" id="' + i + '"type="checkbox" checked="' + e[1] + '"></span>';
+            } else
+                return '<div class="control" id="' + i + "div" + '"><label id="' + i + 'Label" class="left" for="' + i + '">' + e[0](prmtr[i]) + '</label>' +
+                    '<input oninput="upd(' + "'" + i + "'," + 'this.value,true)" id="' + i + '"type="range" min="' + e[1] + '"" max="' + e[2] + '" value="' + prmtr[i] + '" step="' + e[4] + '"class="prmtr"></div>';
         }
         function repanel() {
             let code = document.getElementById("edit");
-            let s = "";
+            let s = ""; let q = "";
             Object.keys(presetParams).forEach(i => {
-                s += genControl(i, presetParams)
+                if (presetParams[i].length == 2)
+                    q += genControl(i, presetParams);
+                else
+                    s += genControl(i, presetParams);
             });
-            s += '<div id="customParameters"></div><div><label for="codeSelect">Code:</label>' +
+            s += '<div id="customParameters"></div><div id="cbbar"><span id="presetCheckboxes">' + q +
+                '</span><span id="customCheckboxes"></span></div><div>' +
+                '<label for="codeSelect">Code:</label>' +
                 '<select name="codes" id = "codeSelect" >' +
                 '<option value="0">Cybercube</option>' +
                 '<option value="1">Cybersphere</option>' +
                 '<option value="2">Cybergrid</option>' +
                 '<option value="3">Cybertorus</option>' +
                 '</select></div>';
-            s += '<textarea rows="20" spellcheck="false" id="edit"></textarea><p id="message"></p>'
+            s += '<textarea style="white-space: pre;" rows="20" cols="80" spellcheck="false" id="edit"></textarea><p id="message"></p>'
             let tv = document.getElementById("codeSelect") ? document.getElementById("codeSelect").value : 0;
             document.getElementById("panel").innerHTML = s;
             document.getElementById("codeSelect").value = tv;
@@ -418,44 +459,54 @@ if( !even )
                 document.getElementById("message").style.display = 'none';
         }
         function addParam(o, reset) {
-            params[o.name] = [o.displayFunc, o.min, o.max, o.default, o.step];
-            if (slider[o.name + "val"] == null) {
-                slider[o.name + "val"] = o.default;
-                Object.defineProperty(slider, o.name, {
+            if (prmtr[o.name + "val"] == null) {
+                prmtr[o.name + "val"] = o.default;
+                Object.defineProperty(prmtr, o.name, {
                     set: f => {
-                        slider[o.name + "val"] = f;
+                        prmtr[o.name + "val"] = f;
                         upd(o.name, f);
                     },
-                    get: () => slider[o.name + "val"]
+                    get: () => prmtr[o.name + "val"]
                 })
             }
-            if (!document.getElementById(o.name))
-                document.getElementById("customParameters").innerHTML += genControl(o.name, params);
+            if (o.label) {
+                params[o.name] = [o.label, o.default];
+                if (!document.getElementById(o.name + "div"))
+                    document.getElementById("customCheckboxes").innerHTML += genControl(o.name, params);
+            } else {
+                params[o.name] = [o.displayFunc, o.min, o.max, o.default, o.step];
+                if (!document.getElementById(o.name + "div"))
+                    document.getElementById("customParameters").innerHTML += genControl(o.name, params);
+            }
             if (reset)
-                slider[o.name] = o.default;
+                prmtr[o.name] = o.default;
 
         }
         function errmsg(err) {
-            let ls = document.getElementById("edit").value.split(/\r?\n/);
-            let l = ls[err.lineNumber];
-            let l1 = (ls[err.lineNumber - 1] ? ls[err.lineNumber - 1] : "") + "\n" + l.substr(0, err.columnNumber);
-            let l2 = l.substr(err.columnNumber) + "\n" + (ls[err.lineNumber + 1] ? ls[err.lineNumber + 1] : "");
+            if (err.type == "SyntaxError") {
+                let ls = document.getElementById("edit").value.split(/\r?\n/);
+                let l = ls[err.lineNumber];
+                let l1 = (ls[err.lineNumber - 1] ? ls[err.lineNumber - 1] : "") + "\n" + l.substr(0, err.columnNumber);
+                let l2 = l.substr(err.columnNumber) + "\n" + (ls[err.lineNumber + 1] ? ls[err.lineNumber + 1] : "");
 
-            log("<span style='color: var(--errorColor)'>Error! " + err.lineNumber + ":" + err.columnNumber + "</span><br><br><code style='white-space: pre-line;'>" +
-                "<span id='errmsgL1'></span><span style='color: var(--errorColor)'>-->error here<--</span><span id='errmsgL2'></span>" +
-                "</span><br><br><span style='color: var(--errorColor)'><span id='errmsgMessage'></span>\n\nStack:\n<span id='errmsgStack'></span></span></code>");
-            document.getElementById("errmsgMessage").innerText = err.message;
-            document.getElementById("errmsgStack").innerText = err.stack;
-            document.getElementById("errmsgL1").innerText = l1;
-            document.getElementById("errmsgL2").innerText = l2;
+                log("<span style='color: var(--errorColor)'>Error! " + err.lineNumber + ":" + err.columnNumber + "</span><br><br><code style='white-space: pre-line;'>" +
+                    "<span id='errmsgL1'></span><span style='color: var(--errorColor)'>-->error here<--</span><span id='errmsgL2'></span>" +
+                    "</span><br><br><span style='color: var(--errorColor)'><span id='errmsgMessage'></span>\n\nStack:\n<span id='errmsgStack'></span></span></code>");
+                document.getElementById("errmsgMessage").innerText = err.message;
+                document.getElementById("errmsgStack").innerText = err.stack;
+                document.getElementById("errmsgL1").innerText = l1;
+                document.getElementById("errmsgL2").innerText = l2;
+            } else
+                alert("Unknown error!\n" + err.toString());
+
         }
-        slider.add = addParam;
+        prmtr.add = addParam;
         function run(noparams) {
             let oparams = params;
             if (!noparams)
                 params = [];
             else
-                slider.add = (e, f) => true;
+                prmtr.add = (e, f) => true;
             points = [];
             edges = [];
             try {
@@ -473,7 +524,7 @@ if( !even )
                     if (!params[i])
                         document.getElementById(i + "div").remove();
             } else
-                slider.add = addParam;
+                prmtr.add = addParam;
         }
         repanel();
 
@@ -524,12 +575,12 @@ if( !even )
                 if (ev.buttons & 2)
                     document.exitPointerLock();
                 if (ev.buttons & 1) {
-                    if (slider.dim > 2) {
+                    if (prmtr.dim > 2) {
                         axesHandle = (axesHandle + mx * axesCombos.length) % axesCombos.length + axesCombos.length;
                         upd("rotAxes", Math.floor(axesHandle - axesCombos.length) + "");
                     }
                 } else {
-                    let ai = axesIndices[slider.rotAxes] || [0, 0];
+                    let ai = axesIndices[prmtr.rotAxes] || [0, 0];
                     rotations[ai[0]] += mx;
                     rotations[ai[1]] += my;
                 }
@@ -541,13 +592,13 @@ if( !even )
     function u(time, delta) {
         x.clearRect(0, 0, c.width, c.height);
         let scaleDim = Math.sqrt(c.width * c.width + c.height * c.height) / Math.sqrt(2);
-        let mzoom = 0.1 * (2 ** (slider.zoom * slider.dim));
+        let mzoom = 0.06 * (2 ** (prmtr.zoom * prmtr.dim));
 
-        let dd = l => l.map(i => i.map((v) => v / (i[0] + slider.dist))).map((i) => (i.shift(), i));
+        let dd = l => l.map(i => i.map((v) => v / (i[0] + prmtr.dist))).map((i) => (i.shift(), i));
         let rot = (l, t, a1, a2) => l.map((i) => i.map((v, j) => (j == a1 ? v * Math.cos(t) + i[a2] * Math.sin(t) : (j == a2 ? v * Math.cos(t) - i[a1] * Math.sin(t) : v))))
 
-        if (!document.pointerLockElement)
-            rotations = rotations.map((e, i) => e + delta * slider.rotSpeed * (4 / (i + 5)));
+        if (!document.pointerLockElement && prmtr.autoRot)
+            rotations = rotations.map((e, i) => e + delta * prmtr.rotSpeed * (4 / (i + 5)));
 
         let d = [];
         let widths = [];
@@ -556,24 +607,27 @@ if( !even )
             p = rot(p, e, axes[i][0], axes[i][1]);
         });
 
+        let e = edges;
         if (p[0]) {
             while (p[0].length > 3)
                 p = dd(p);
             if (p[0].length == 3) {
-                widths = p.map((i) => 10 * slider.lineWidth / (i[0] + slider.dist))
+                widths = p.map((i) => 10 * prmtr.lineWidth / (i[0] + prmtr.dist))
+                if (prmtr.occlusion)
+                    e = edges.sort((v1, v2) => (p[v2[0]][0] + p[v2[1]][0]) - (p[v1[0]][0] + p[v1[1]][0]));
                 p = dd(p);
             } else
-                widths = p.map((i) => slider.lineWidth);
+                widths = p.map((i) => prmtr.lineWidth);
             d = p.map((i) => (i.map((j) => j * 0.5 * mzoom)));
         }
 
 
 
         let i = 0;
-        while (edges[i]) {
+        while (e[i]) {
             let ox = c.width / 2;
             let oy = c.height / 2;
-            let s = slider.segments;
+            let s = prmtr.segments;
             let xb = d[edges[i][0]][0] * scaleDim + ox;
             let yb = d[edges[i][0]][1] * scaleDim + oy;
             let wb = widths[edges[i][0]];
@@ -583,8 +637,8 @@ if( !even )
             x.moveTo(xb, yb);
             x.strokeStyle = 'rgb(' + edges[i][2] + ',' + edges[i][3] + ',' + edges[i][4] + ')';
             x.beginPath();
-            for (s = 0; s <= slider.segments; ++s) {
-                let sc = 1 - (s / slider.segments);
+            for (s = 0; s <= prmtr.segments; ++s) {
+                let sc = 1 - (s / prmtr.segments);
                 x.lineWidth = wb + sc * ws;
                 x.lineTo(xb + sc * xs, yb + sc * ys);
                 x.stroke();
