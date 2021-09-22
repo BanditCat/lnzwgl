@@ -1,9 +1,8 @@
 BasedOnStyle: google
-IndentWidth: 8
+IndentWidth: 4
 
 
 Language: JavaScript
-AlignArrayOfStructures: Left
 ColumnLimit: 160
 SpacesInConditionalStatement: true
 SpacesInParentheses: true

@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html>
 <script>
-
-
 </script>
 
 <head>
@@ -204,35 +202,54 @@ return {
     runOnce: runOnce,
     edgeColors: edgeColors
 };`,
-            `
-        prmtr.add({
-            displayFunc: (v => "Saturation: " + v), name: "sat",
-            min: 0, max: 1, default: 0.5, step: 0.01
-        });
-        prmtr.add({
-            displayFunc: (v => "Grid segments: " + v), name: "gridSegs",
-            min: 3, max: 16, default: 4, step: 1
-        });
+            `function runOnce() {
+    prmtr.add({ displayFunc: (v => 'Saturation: ' + v), name: 'sat', min: 0, max: 1, default: 0.5, step: 0.01 });
+    prmtr.add({ displayFunc: (v => 'Grid segments: ' + v), name: 'gridSegs', min: 3, max: 16, default: 3, step: 1 });
+    prmtr.dim = 5;
+    prmtr.lineWidth = 0.3;
+}
 
-        let s = prmtr.gridSegs;
-        let nedges = [];
-        let npoints = points = [...Array(s).keys()].map(e => [e * 2 / (s - 1) - 1]);
-        edges = [[0, s - 1]];
-        for (let d = 1; d < prmtr.dim; ++d) {
-            npoints = npoints.flatMap(e => points.map(f => e.concat(f)));
-            edges = [...Array(s).keys()].flatMap(e => edges.map(f => f.map(g => g + e * s * edges.length)))
 
-        }
+function points() {
+    let s = prmtr.gridSegs;
+    let nps = [...Array(s).keys()].map(e => [e * 2 / (s - 1) - 1]);
+    let ps = nps;
+    for (let d = 1; d < prmtr.dim; ++d)
+        nps = nps.flatMap(e => ps.map(f => e.concat(f)));
+    return nps;
+}
+function edges() {
+    let s = prmtr.gridSegs;
+    let es = [[0, s - 1]];
+    for (let d = 1; d < prmtr.dim; ++d) {
+        es = [...Array(s).keys()].flatMap(e => es.map(f => f.map(g => g + e * s * es.length)))
+    }
+    let fmod = x => Math.floor(x / s) + (x % s) * (s ** (prmtr.dim - 1));
+    let nes = [];
+    for (let d = 0; d < prmtr.dim; ++d) {
+        nes = nes.concat(es.map(e => e.concat(hsv2rgb(d * 360 / prmtr.dim, prmtr.sat, 1))));
+        es = es.map((e, k) => [fmod(e[0]), fmod(e[1])]);
+    }
+    return nes;
+}
 
-        let fmod = x => Math.floor(x / s) + (x % s) * (s ** (prmtr.dim - 1));
-        nedges = [];
-        for (let d = 0; d < prmtr.dim; ++d) {
-            nedges = nedges.concat(edges.map(e => e.concat(hsv2rgb(d * 360 / prmtr.dim, prmtr.sat, 1))));
-            edges = edges.map((e, k) => [fmod(e[0]), fmod(e[1])]);
-        }
-        edges = nedges;
-        points = npoints;
-        `,
+function edgeColors() {
+    let ret = [];
+    let perdim = prmtr.gridSegs ** (prmtr.dim - 1);
+    for (let i = 0; i < prmtr.dim; ++i) {
+        let color = hsv2rgb(i * 360 / prmtr.dim, prmtr.sat, 1);
+        for (let j = 0; j < perdim; ++j)
+            ret.push(color);
+    }
+    return ret;
+}
+
+return {
+    points: points,
+    edges: edges,
+    runOnce: runOnce,
+    edgeColors: edgeColors
+};`,
             `prmtr.add({
             displayFunc: (v => "Saturation: " + v), name: "sat",
             min: 0, max: 1, default: 0.5, step: 0.01
@@ -291,7 +308,7 @@ return {
         let edges = [];
         let edgeColors = [];
         let pointColors = [];
-        let params = [];
+        let params = {};
         let center = [[0]];
         let currentGeometry = null;
         let scale = 1;
@@ -591,7 +608,8 @@ return {
                         prmtr[o.name + "val"] = f;
                         upd(o.name, f);
                     },
-                    get: () => prmtr[o.name + "val"]
+                    get: () => prmtr[o.name + "val"],
+                    configurable: true
                 })
             }
             if (o.label) {
@@ -628,8 +646,7 @@ return {
         prmtr.add = addParam;
         function run() {
             let oparams = params;
-            params = [];
-
+            params = {};
             points = [];
             edges = [];
             try {
@@ -638,15 +655,20 @@ return {
                 let ret = create();
                 if (ret.runOnce)
                     ret.runOnce();
+
                 currentGeometry = ret;
                 regeometry();
 
             } catch (err) {
                 errmsg(err);
             }
-            for (i in oparams)
-                if (!params[i])
+            for (i in oparams) {
+                if (!params[i]) {
+                    delete prmtr[i + "val"];
+                    delete prmtr[i];
                     document.getElementById(i + "div").remove();
+                }
+            }
         }
         repanel(); run();
 
@@ -735,8 +757,8 @@ return {
                 p = dd(p);
             if (p[0].length == 3) {
                 widths = p.map((i) => 10 * prmtr.lineWidth / (i[0] + prmtr.dist))
-                //if (prmtr.occlusion)
-                //           indices = indices.sort((v1, v2) => (p[edges[v2][0]][0] + p[edges[v2][1]][0]) - (p[edges[v1][0]][0] + p[edges[v1][1]][0]));
+                if (prmtr.occlusion)
+                    indices = indices.sort((v1, v2) => (p[edges[v2][0]][0] + p[edges[v2][1]][0]) - (p[edges[v1][0]][0] + p[edges[v1][1]][0]));
                 p = dd(p);
             } else
                 widths = p.map((i) => prmtr.lineWidth * 2);
@@ -750,7 +772,6 @@ return {
             let i = indices[j];
             let ox = c.width / 2;
             let oy = c.height / 2;
-            let s = prmtr.segments;
             let xb = d[edges[i][0]][0] * scaleDim + ox;
             let yb = d[edges[i][0]][1] * scaleDim + oy;
             let wb = widths[edges[i][0]];
@@ -761,11 +782,11 @@ return {
             x.moveTo(xb, yb);
 
             let segs = prmtr.segments || 1;
-            for (s = 0; s < segs; ++s) {
-                let sc = 1 - (s / prmtr.segments);
+            for (let s = 0; s < segs; ++s) {
+                let sc = 1 - (s / segs);
                 let xcoord = xb + sc * xs;
                 let ycoord = yb + sc * ys;
-                let sc2 = 1 - ((s + 1) / prmtr.segments);
+                let sc2 = 1 - ((s + 1) / segs);
                 let xcoord2 = xb + sc2 * xs;
                 let ycoord2 = yb + sc2 * ys;
                 if (edgeColors)
