@@ -1,7 +1,5 @@
 <!DOCTYPE html>
 <html>
-<script>
-</script>
 
 <head>
     <meta charset="utf-8">
@@ -250,61 +248,105 @@ return {
     runOnce: runOnce,
     edgeColors: edgeColors
 };`,
-            `prmtr.add({
-            displayFunc: (v => "Saturation: " + v), name: "sat",
-            min: 0, max: 1, default: 0.5, step: 0.01
-        });
+            `function runOnce() {
+    prmtr.add({
+        displayFunc: (v => "Saturation: " + v), name: "sat",
+        min: 0, max: 1, default: 0.5, step: 0.01
+    });
+    prmtr.add({
+        displayFunc: (v => "Circle segments: " + v), name: "circleSegs",
+        min: 3, max: 64, default: 32, step: 1
+    });
+    let sdim = Math.floor((prmtr.dim + 1) / 2);
+    for (let i = 0; i < sdim; ++i) {
+        let nm = "rad" + i;
+        let dv = (i + 1) / sdim;
         prmtr.add({
-            displayFunc: (v => "Circle segments: " + v), name: "circleSegs",
-            min: 3, max: 64, default: 4, step: 1
+            displayFunc: (v => "Radius " + i + ": " + v), name: nm,
+            min: 0, max: 2, default: dv, step: 0.001
         });
+        prmtr[nm] = dv;
+    }
+    prmtr.circleSegs = Math.floor(350 / (sdim ** 3));
+    prmtr.dim = 4;
+    prmtr.lineWidth = 0.15
+}
+let es = [];
+let ps = [];
+function gen() {
+    let sdim = Math.floor((prmtr.dim + 1) / 2);
+    let even = prmtr.dim % 2 == 0;
 
-        let sdim = Math.floor((prmtr.dim + 1) / 2);
-        let even = prmtr.dim % 2 == 0;
-        for (let i = 0; i < sdim; ++i)
-            prmtr.add({
-                displayFunc: (v => "Radius " + i + ": " + v), name: "rad" + i,
-                min: 0, max: 2, default: (i + 1) / sdim, step: 0.001
-            }, true);
+    let s = prmtr.circleSegs;
+    let nes = [];
+    let nps = ps = [...Array(s).keys()].map(e => [e * 2 / (s) - 1]);
+    es = [...Array(s).keys()].map(e => [e, (e + 1) % s]);
+    for (let d = 1; d < sdim; ++d) {
+        nps = nps.flatMap(e => ps.map(f => e.concat(f)));
+        nes = [...Array(s).keys()].flatMap(e => es.map(f => f.map(g => g + e * es.length)))
+        es = nes.map(f => [f[0], (f[0] + es.length) % nes.length]);
 
-        let s = prmtr.circleSegs;
-        let nedges = [];
-        let npoints = points = [...Array(s).keys()].map(e => [e * 2 / (s) - 1]);
-        edges = [...Array(s).keys()].map(e => [e, (e + 1) % s]);
-        for (let d = 1; d < sdim; ++d) {
-            npoints = npoints.flatMap(e => points.map(f => e.concat(f)));
-            nedges = [...Array(s).keys()].flatMap(e => edges.map(f => f.map(g => g + e * edges.length)))
-            edges = nedges.map(f => [f[0], (f[0] + edges.length) % nedges.length]);
+    }
+    let fmod = x => Math.floor(x / s) + (x % s) * (s ** (sdim - 1));
+    nes = [];
+    for (let d = 0; d < sdim; ++d) {
+        nes = nes.concat(es.map(e => e.concat(hsv2rgb(d * 360 / prmtr.dim, prmtr.sat, 1))));
+        es = es.map((e, k) => [fmod(e[0]), fmod(e[1])]);
+    }
+    es = nes;
+    ps = nps;
 
-        }
-        let fmod = x => Math.floor(x / s) + (x % s) * (s ** (sdim - 1));
-        nedges = [];
-        for (let d = 0; d < sdim; ++d) {
-            nedges = nedges.concat(edges.map(e => e.concat(hsv2rgb(d * 360 / prmtr.dim, prmtr.sat, 1))));
-            edges = edges.map((e, k) => [fmod(e[0]), fmod(e[1])]);
-        }
-        edges = nedges;
-        points = npoints;
+    ps = ps.map(element =>
+        element.flatMap((e, k) => {
+            let r = prmtr["rad" + k];
+            return even || k < sdim - 1 ? [r * Math.sin(Math.PI * e), r * Math.cos(Math.PI * e)] : [e];
+        })
+    );
 
-        let str = "";
-        points = points.map(element =>
-            element.flatMap((e, k) => {
-                let r = prmtr["rad" + k];
-                return even || k < sdim - 1 ? [r * Math.sin(Math.PI * e), r * Math.cos(Math.PI * e)] : [e];
-            })
-        );
+    if (!even)
+        ps = ps.map(element => {
+            let r = prmtr["rad" + (sdim - 1)];
+            let r2 = prmtr["rad" + (sdim - 2)];
+            return element.map((e, k) => {
+                let le = Math.PI * element[element.length - 1];
+                return (k == prmtr.dim - 1 ? r * r2 * Math.sin(le) : e * (r2 + r * Math.cos(le)));
+            });
+        });
+}
 
-        if (!even)
-            points = points.map(element => {
-                let r = prmtr["rad" + (sdim - 1)];
-                let r2 = prmtr["rad" + (sdim - 2)];
-                return element.map((e, k) => {
-                    let le = Math.PI * element[element.length - 1];
-                    return (k == prmtr.dim - 1 ? r * r2 * Math.sin(le) : e * (r2 + r * Math.cos(le)));
-                });
-            });`
+function points() {
+    gen();
+    return ps;
+}
+
+function edges() {
+    gen();
+    return es;
+}
+
+
+function edgeColors() {
+    let ret = [];
+    let sdim = Math.floor((prmtr.dim + 1) / 2);
+    let perdim = prmtr.circleSegs ** sdim;
+
+    for (let i = 0; i < sdim; ++i) {
+        let color = hsv2rgb(i * 360 / sdim, prmtr.sat, 1);
+        for (let j = 0; j < perdim; ++j)
+            ret.push(color);
+    }
+    return ret;
+}
+
+return {
+    points: points,
+    edges: edges,
+    runOnce: runOnce,
+    edgeColors: edgeColors
+};`
         ];
         let points = [];
+        let animationFrame = false;
         let edges = [];
         let edgeColors = [];
         let pointColors = [];
@@ -312,6 +354,7 @@ return {
         let center = [[0]];
         let currentGeometry = null;
         let scale = 1;
+        let l = false;
         function regeometry() {
             if (currentGeometry != null) {
                 points = currentGeometry.points();
@@ -478,10 +521,12 @@ return {
         function redim(v) {
             if (!v)
                 v = prmtr.dim;
+
             let combine = (a) => a.flatMap((e, i) => a.filter((f, j) => j > i).map(g => [e, g]));
             axes = combine([...Array(v).keys()]);
             axesCombos = combine(axes);
             axesIndices = combine([...axes.keys()]);
+
             while (rotations.length < axes.length)
                 rotations.push(0);
             while (rotations.length > axes.length)
@@ -489,9 +534,20 @@ return {
             if (document.getElementById("rotAxes")) {
                 document.getElementById("rotAxes").max = axesCombos.length - 1;
                 upd("rotAxes", 0);
+
+            }
+            if (currentGeometry) {
+                let temp = redim;
+                redim = () => false;
+                runOnceWrapper();
+                prmtr.dim = v;
+                redim = temp;
             }
             regeometry();
         }
+
+
+
         function axisname(x) {
 
             if (prmtr.dim == 2 || axesCombos.length == 0) {
@@ -519,7 +575,6 @@ return {
                 prmtr[e + "val"] = presetParams[e][3];
             Object.defineProperty(prmtr, e, {
                 set: f => {
-                    prmtr[e + "val"] = f;
                     upd(e, f);
                 },
                 get: () => prmtr[e + "val"]
@@ -532,7 +587,6 @@ return {
                 prmtr[id + "val"] = value;
             } else {
                 let nv = parseFloat(value);
-                ov = prmtr.dim;
                 prmtr[id + "val"] = nv;
                 document.getElementById(id + 'Label').innerHTML = (presetParams[id] ? presetParams[id] : params[id])[0](nv);
                 if (!controled) {
@@ -600,18 +654,15 @@ return {
             if (document.getElementById("message").innerHTML == "")
                 document.getElementById("message").style.display = 'none';
         }
-        function addParam(o, reset) {
-            if (prmtr[o.name + "val"] == null) {
-                prmtr[o.name + "val"] = o.default;
-                Object.defineProperty(prmtr, o.name, {
-                    set: f => {
-                        prmtr[o.name + "val"] = f;
-                        upd(o.name, f);
-                    },
-                    get: () => prmtr[o.name + "val"],
-                    configurable: true
-                })
-            }
+        function addParam(o) {
+            prmtr[o.name + "val"] = o.default;
+            Object.defineProperty(prmtr, o.name, {
+                set: f => {
+                    upd(o.name, f);
+                },
+                get: () => prmtr[o.name + "val"],
+                configurable: true
+            })
             if (o.label) {
                 params[o.name] = [o.label, o.default];
                 if (!document.getElementById(o.name + "div"))
@@ -621,8 +672,6 @@ return {
                 if (!document.getElementById(o.name + "div"))
                     document.getElementById("customParameters").innerHTML += genControl(o.name, params);
             }
-            if (reset)
-                prmtr[o.name] = o.default;
 
         }
         function errmsg(err) {
@@ -640,35 +689,44 @@ return {
                 document.getElementById("errmsgL1").innerText = l1;
                 document.getElementById("errmsgL2").innerText = l2;
             } else
-                alert("Unknown error!\n" + err.toString());
+                log("Unknown error!\n" + err.toString());
 
+        }
+        function runOnceWrapper() {
+            let oparams = params;
+            params = {};
+            let trg = regeometry;
+            regeometry = () => false;
+            if (currentGeometry.runOnce)
+                currentGeometry.runOnce();
+            for (i in oparams) {
+                if (!params[i]) {
+                    delete prmtr[i + "val"];
+                    delete prmtr[i];
+                    if (document.getElementById(i + "div"))
+                        document.getElementById(i + "div").remove();
+                }
+            }
+            regeometry = trg;
         }
         prmtr.add = addParam;
         function run() {
-            let oparams = params;
-            params = {};
             points = [];
             edges = [];
             try {
                 log("");
                 let create = Function(document.getElementById("edit").value);
                 let ret = create();
-                if (ret.runOnce)
-                    ret.runOnce();
-
                 currentGeometry = ret;
+                runOnceWrapper();
                 regeometry();
-
             } catch (err) {
                 errmsg(err);
             }
-            for (i in oparams) {
-                if (!params[i]) {
-                    delete prmtr[i + "val"];
-                    delete prmtr[i];
-                    document.getElementById(i + "div").remove();
-                }
-            }
+
+            window.cancelAnimationFrame(animationFrame);
+            if (l)
+                animationFrame = window.requestAnimationFrame(l);
         }
         repanel(); run();
 
@@ -818,14 +876,14 @@ return {
 
     }
     let ot = (new Date()).getTime() / 1000;
-    function l() {
+    l = () => {
         let t = (new Date()).getTime() / 1000;
         dt = t - ot;
         u(t, dt);
         ot = t;
-        requestAnimationFrame(l);
+        animationFrame = requestAnimationFrame(l);
     }
-    requestAnimationFrame(l);
+    animationFrame = requestAnimationFrame(l);
 </script>
 
 </html>
