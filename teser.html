@@ -19,7 +19,7 @@
 //  points. The function must also include a function edgeColors, with an rgb //
 // array for each edge, or a function pointColors, for per-vertex coloring.   //
 // An optional function, runOnce, may be included with a initialization       //
-// routine.                                                                   //
+// routine. These must be bundled into an object and returned.                //
 //                                                                            //
 // Available functions:                                                       //
 //   hsv2rgb( h, s, v )                                                       //
@@ -39,154 +39,227 @@
 //                                                                            //
 // You can add extra parameters like this   ↓                                 //
 ////////////////////////////////////////////////////////////////////////////////
-prmtr.add({displayFunc:(v => "Saturation: " + v), name: "sat", min: 0, max: 1,
-           default: 0.5, step: 0.01}); 
-// A boolean option
-prmtr.add({name: "diag", label: "Diagonals", default: false})
+function runOnce(){
+    // A slider option
+    prmtr.add({displayFunc:(v => "Saturation: " + v), name: "sat", min: 0, max: 1,
+               default: 0.5, step: 0.01});
+    // A boolean option
+    prmtr.add({name: "perVertex", label: "Per point coloring", default: false});
+    prmtr.add({displayFunc:(v => "Line segments: " + v), name: "segments", min: 1, max: 16,
+               default: 4, step: 1});
+    prmtr.dim = 4;
+}
 
-// r generates the points of a cybercube
-let q = (v, l) => l.map((i) => i.concat([v]));
-let r = (n, l) => n ? r(n - 1, q(-1, l).concat(q(1, l))) : l
-points = r(prmtr.dim, [[]]);
+function points(){
+    let q = (v, l) => l.map((i) => i.concat([v]));
+    let r = (n, l) => n ? r(n - 1, q(-1, l).concat(q(1, l))) : l
+    return r(prmtr.dim, [[]]);
+}
 
-
-// edges contains indices into points
-edges = [];
-for (let i = 0; i < points.length / 2; ++i) {
-    let x = i * 2;
-    let y = x + 1;
-    for (let d = 0; d < prmtr.dim; d++) {
-        let p = [x, y];
-        p = p.concat(hsv2rgb((d / prmtr.dim + 12) * 360, prmtr.sat, 1));
-        edges.push(p);
-        x = shl(x); y = shl(y);
+function edges(){
+    let ret = [];
+    let len = 2 ** prmtr.dim / 2;
+    for (let i = 0; i < len; ++i) {
+        let x = i * 2;
+        let y = x + 1;
+        for (let d = 0; d < prmtr.dim; d++) {
+            ret.push([x, y]);
+            x = shl(x); y = shl(y);
+        }
     }
-}`,
-            `prmtr.add({displayFunc:(v => "Saturation: " + v), name: "sat",
-          min: 0,   max: 1,   default: 0.5,     step: 0.01});            
-prmtr.add({displayFunc:(v => "Circle segments: " + v), name: "circleSegs",
-          min: 3,   max: 64,   default: 16,     step: 1});            
-prmtr.add({displayFunc:(v => "Slices: " + v), name: "slices",
-          min: 1,   max: 20,   default: 3,     step: 1});        
+    return ret;
+}
 
-for( let i = 0; i < prmtr.circleSegs; ++i ){
-  
-  points.push( [Math.sin(2*Math.PI*i/prmtr.circleSegs),
-                Math.cos(2*Math.PI*i/prmtr.circleSegs)] );
-  edges.push( [i,(i+1)%prmtr.circleSegs] );
+function edgeColors(){
+    let ret = [];
+    if( prmtr.perVertex )
+        return false;
+    else {
+        let len = 2 ** prmtr.dim / 2;
+        for (let i = 0; i < len; ++i) {
+            for (let d = 0; d < prmtr.dim; d++) {
+                ret.push(hsv2rgb((d / prmtr.dim + 12) * 360, prmtr.sat, 1));
+            }
+        }
+        return ret;
+    }
+}
+
+function pointColors(){
+    let ret = [];
+    let len = 2 ** prmtr.dim;
+    for (let i = 0; i < len; ++i)
+        ret.push(hsv2rgb(i*360/len, prmtr.sat, 1));
+    return (prmtr.perVertex ? ret : false);
 }
 
 
-
-let newPoints = [];
-let newEdges = [];
-points.forEach(e=>{while(e.length < prmtr.dim)e.push(0)});
-
-for( let d = 2; d < prmtr.dim; ++d ){
-  for( let i = 0; i < prmtr.slices; ++i ){
-    let r = 2 * (i+0.5) / prmtr.slices - 1;
-    let sc = Math.sqrt( 1 - r*r );
-    newPoints = newPoints.concat( points.map( e => (e.map( (f, h) => (h == d ? r : sc*f)))));
-    newEdges = newEdges.concat( edges.map( e => (e.map( f => f + newEdges.length ))));
-  }
-}
-
-function rotate( a ){
-  let b = a.slice();
-  b.push( b.shift() );
-  return b;
-}
+let ret = {
+    points: points,
+    edges: edges,
+    runOnce: runOnce,
+    edgeColors: edgeColors,
+    pointColors: pointColors
+};
 
 
-if( newEdges.length ){
-  edges = newEdges; points = newPoints;
-  newPoints = []; newEdges = [];
-  for( let i = 0; i < prmtr.dim; ++i ){
-    newPoints = newPoints.concat( points );
-    points = points.map( e => rotate( e ) );
-    newEdges = newEdges.concat( edges.map( e => ([...e.map( f => f + newEdges.length ),...hsv2rgb(i * 360 / prmtr.dim,prmtr.sat,1)])));
-  }
-  edges = newEdges; points = newPoints;
-} else 
-edges.forEach(e=>{while(e.length < 5)e.push(255)});`,
+return ret;`,
+            `prmtr.add({
+            displayFunc: (v => "Saturation: " + v), name: "sat",
+            min: 0, max: 1, default: 0.5, step: 0.01
+        });
+            prmtr.add({
+                displayFunc: (v => "Circle segments: " + v), name: "circleSegs",
+                min: 3, max: 64, default: 16, step: 1
+            });
+            prmtr.add({
+                displayFunc: (v => "Slices: " + v), name: "slices",
+                min: 1, max: 20, default: 3, step: 1
+            });        
+
+for (let i = 0; i < prmtr.circleSegs; ++i) {
+
+            points.push([Math.sin(2 * Math.PI * i / prmtr.circleSegs),
+            Math.cos(2 * Math.PI * i / prmtr.circleSegs)]);
+            edges.push([i, (i + 1) % prmtr.circleSegs]);
+        }
+
+
+
+        let newPoints = [];
+        let newEdges = [];
+        points.forEach(e => { while (e.length < prmtr.dim) e.push(0) });
+
+        for (let d = 2; d < prmtr.dim; ++d) {
+            for (let i = 0; i < prmtr.slices; ++i) {
+                let r = 2 * (i + 0.5) / prmtr.slices - 1;
+                let sc = Math.sqrt(1 - r * r);
+                newPoints = newPoints.concat(points.map(e => (e.map((f, h) => (h == d ? r : sc * f)))));
+                newEdges = newEdges.concat(edges.map(e => (e.map(f => f + newEdges.length))));
+            }
+        }
+
+        function rotate(a) {
+            let b = a.slice();
+            b.push(b.shift());
+            return b;
+        }
+
+
+        if (newEdges.length) {
+            edges = newEdges; points = newPoints;
+            newPoints = []; newEdges = [];
+            for (let i = 0; i < prmtr.dim; ++i) {
+                newPoints = newPoints.concat(points);
+                points = points.map(e => rotate(e));
+                newEdges = newEdges.concat(edges.map(e => ([...e.map(f => f + newEdges.length), ...hsv2rgb(i * 360 / prmtr.dim, prmtr.sat, 1)])));
+            }
+            edges = newEdges; points = newPoints;
+        } else
+            edges.forEach(e => { while (e.length < 5) e.push(255) }); `,
             `
-prmtr.add({displayFunc:(v => "Saturation: " + v), name: "sat",
-          min: 0, max: 1, default: 0.5, step: 0.01});            
-prmtr.add({displayFunc:(v => "Grid segments: " + v), name: "gridSegs",
-          min: 3, max: 16, default: 4, step: 1});            
+        prmtr.add({
+            displayFunc: (v => "Saturation: " + v), name: "sat",
+            min: 0, max: 1, default: 0.5, step: 0.01
+        });
+        prmtr.add({
+            displayFunc: (v => "Grid segments: " + v), name: "gridSegs",
+            min: 3, max: 16, default: 4, step: 1
+        });
 
-let s = prmtr.gridSegs;
-let nedges = [];
-let npoints = points = [...Array(s).keys()].map( e => [e * 2 / (s-1) - 1] );
-edges = [[0,s-1]];
-for( let d = 1; d < prmtr.dim; ++d ){ 
-  npoints = npoints.flatMap( e => points.map( f => e.concat( f )));
-  edges = [...Array(s).keys()].flatMap( e => edges.map( f => f.map( g => g + e*s*edges.length )))
+        let s = prmtr.gridSegs;
+        let nedges = [];
+        let npoints = points = [...Array(s).keys()].map(e => [e * 2 / (s - 1) - 1]);
+        edges = [[0, s - 1]];
+        for (let d = 1; d < prmtr.dim; ++d) {
+            npoints = npoints.flatMap(e => points.map(f => e.concat(f)));
+            edges = [...Array(s).keys()].flatMap(e => edges.map(f => f.map(g => g + e * s * edges.length)))
 
-}
+        }
 
-let fmod = x => Math.floor( x / s ) + ( x % s ) * ( s ** (prmtr.dim -1));
-nedges = [];
-for( let d = 0; d < prmtr.dim; ++d ){ 
-  nedges = nedges.concat(edges.map( e => e.concat( hsv2rgb(d * 360 / prmtr.dim,prmtr.sat,1))));
-  edges = edges.map( (e,k) => [fmod(e[0]),fmod(e[1])]);
-}
-edges = nedges;
-points = npoints;
-`,
-            `prmtr.add({displayFunc:(v => "Saturation: " + v), name: "sat",
-          min: 0, max: 1, default: 0.5, step: 0.01});            
-prmtr.add({displayFunc:(v => "Circle segments: " + v), name: "circleSegs",
-          min: 3, max: 64, default: 4, step: 1});            
+        let fmod = x => Math.floor(x / s) + (x % s) * (s ** (prmtr.dim - 1));
+        nedges = [];
+        for (let d = 0; d < prmtr.dim; ++d) {
+            nedges = nedges.concat(edges.map(e => e.concat(hsv2rgb(d * 360 / prmtr.dim, prmtr.sat, 1))));
+            edges = edges.map((e, k) => [fmod(e[0]), fmod(e[1])]);
+        }
+        edges = nedges;
+        points = npoints;
+        `,
+            `prmtr.add({
+            displayFunc: (v => "Saturation: " + v), name: "sat",
+            min: 0, max: 1, default: 0.5, step: 0.01
+        });
+        prmtr.add({
+            displayFunc: (v => "Circle segments: " + v), name: "circleSegs",
+            min: 3, max: 64, default: 4, step: 1
+        });
 
-let sdim = Math.floor( (prmtr.dim + 1 ) / 2 );
-let even = prmtr.dim % 2 == 0;
-for( let i = 0; i < sdim; ++i )
-  prmtr.add({displayFunc:(v => "Radius " + i + ": " + v), name: "rad" + i,
-           min: 0, max: 2, default: (i+1) / sdim, step: 0.001}, true);
+        let sdim = Math.floor((prmtr.dim + 1) / 2);
+        let even = prmtr.dim % 2 == 0;
+        for (let i = 0; i < sdim; ++i)
+            prmtr.add({
+                displayFunc: (v => "Radius " + i + ": " + v), name: "rad" + i,
+                min: 0, max: 2, default: (i + 1) / sdim, step: 0.001
+            }, true);
 
-let s = prmtr.circleSegs;
-let nedges = [];
-let npoints = points = [...Array(s).keys()].map( e => [e * 2 / (s) - 1] );
-edges = [...Array(s).keys()].map( e => [e, (e+1) % s] );
-for( let d = 1; d < sdim; ++d ){ 
-  npoints = npoints.flatMap( e => points.map( f => e.concat( f )));
-  nedges = [...Array(s).keys()].flatMap( e => edges.map( f => f.map( g => g + e*edges.length )))
-  edges = nedges.map( f => [f[0],(f[0]+edges.length)%nedges.length] );
+        let s = prmtr.circleSegs;
+        let nedges = [];
+        let npoints = points = [...Array(s).keys()].map(e => [e * 2 / (s) - 1]);
+        edges = [...Array(s).keys()].map(e => [e, (e + 1) % s]);
+        for (let d = 1; d < sdim; ++d) {
+            npoints = npoints.flatMap(e => points.map(f => e.concat(f)));
+            nedges = [...Array(s).keys()].flatMap(e => edges.map(f => f.map(g => g + e * edges.length)))
+            edges = nedges.map(f => [f[0], (f[0] + edges.length) % nedges.length]);
 
-}
-let fmod = x => Math.floor( x / s ) + ( x % s ) * ( s ** (sdim -1));
-nedges = [];
-for( let d = 0; d < sdim; ++d ){ 
-  nedges = nedges.concat(edges.map( e => e.concat( hsv2rgb(d * 360 / prmtr.dim,prmtr.sat,1))));
-  edges = edges.map( (e,k) => [fmod(e[0]),fmod(e[1])]);
-}
-edges = nedges;
-points = npoints;
+        }
+        let fmod = x => Math.floor(x / s) + (x % s) * (s ** (sdim - 1));
+        nedges = [];
+        for (let d = 0; d < sdim; ++d) {
+            nedges = nedges.concat(edges.map(e => e.concat(hsv2rgb(d * 360 / prmtr.dim, prmtr.sat, 1))));
+            edges = edges.map((e, k) => [fmod(e[0]), fmod(e[1])]);
+        }
+        edges = nedges;
+        points = npoints;
 
-let str = "";
-points = points.map( element => 
-  element.flatMap( (e,k) => {
-    let r = prmtr["rad"+k];
-    return even || k < sdim - 1 ? [r*Math.sin(Math.PI*e),r*Math.cos(Math.PI*e)] : [e];
-  })
-);
+        let str = "";
+        points = points.map(element =>
+            element.flatMap((e, k) => {
+                let r = prmtr["rad" + k];
+                return even || k < sdim - 1 ? [r * Math.sin(Math.PI * e), r * Math.cos(Math.PI * e)] : [e];
+            })
+        );
 
-if( !even )
-  points = points.map( element => {
-    let r = prmtr["rad"+(sdim-1)];
-    let r2 = prmtr["rad"+(sdim-2)];
-    return element.map( (e,k) => {
-      let le = Math.PI * element[ element.length - 1 ];
-      return (k == prmtr.dim-1 ? r * r2 * Math.sin( le ) : e * ( r2 + r * Math.cos( le ) ) );
-    });
-  });`
+        if (!even)
+            points = points.map(element => {
+                let r = prmtr["rad" + (sdim - 1)];
+                let r2 = prmtr["rad" + (sdim - 2)];
+                return element.map((e, k) => {
+                    let le = Math.PI * element[element.length - 1];
+                    return (k == prmtr.dim - 1 ? r * r2 * Math.sin(le) : e * (r2 + r * Math.cos(le)));
+                });
+            });`
         ];
         let points = [];
         let edges = [];
+        let edgeColors = [];
+        let pointColors = [];
         let params = [];
         let center = [[0]];
+        let currentGeometry = null;
         let scale = 1;
+        function regeometry() {
+            if (currentGeometry != null) {
+                points = currentGeometry.points();
+                edges = currentGeometry.edges();
+                edgeColors = currentGeometry.edgeColors();
+                pointColors = currentGeometry.pointColors();
+                center = points.reduce((v, nv) => v.map((e, k) => e + nv[k]));
+                scale = Math.sqrt(Math.max(...points.map(v => v.reduce((v2, nv2) => v2 + (nv2 * nv2), 0))));
+                points = points.map(e => e.map(f => f / scale));
+            }
+        }
+
         function shl(x, highBit) {
             let b = x & 1;
             x >>= 1;
@@ -347,7 +420,7 @@ if( !even )
                 document.getElementById("rotAxes").max = axesCombos.length - 1;
                 upd("rotAxes", 0);
             }
-            run();
+            regeometry();
         }
         function axisname(x) {
 
@@ -363,7 +436,6 @@ if( !even )
             'lineWidth': [v => "Line width: " + v, 0.01, 5, 1, 0.001],
             'dist': [v => "Distance: " + v, 1, 5, 1.5, 0.001],
             'zoom': [v => "Zoom: " + v, 0, 2, 1, 0.001],
-            'segments': [v => "Line segments: " + v, 1, 10, 1, 1],
             'rotSpeed': [v => "Rotation speed: " + v, 0, 5, 1, 0.1],
             'rotAxes': [v => "Rotation axes: " + axisname(parseFloat(v), 4), 0, 0, 1, 1],
             'autoRot': ["Autorotate", true],
@@ -401,7 +473,7 @@ if( !even )
                 }
             }
             if (params[id]) {
-                run(true);
+                regeometry();
             }
         }
 
@@ -410,7 +482,7 @@ if( !even )
             let e = pars[i];
             if (e.length == 2) {
                 return '<span class="cbcontrol" id="' + i + "div" + '"><label id="' + i + 'Label" class="left" for="' + i + '">' + e[0] + '</label>' +
-                    '<input oninput="upd(' + "'" + i + "'," + 'this.checked,true)" id="' + i + '"type="checkbox" checked="' + e[1] + '"></span>';
+                    '<input oninput="upd(' + "'" + i + "'," + 'this.checked,true)" id="' + i + '"type="checkbox" ' + (e[1] ? 'checked' : '') + '></span>';
             } else
                 return '<div class="control" id="' + i + "div" + '"><label id="' + i + 'Label" class="left" for="' + i + '">' + e[0](prmtr[i]) + '</label>' +
                     '<input oninput="upd(' + "'" + i + "'," + 'this.value,true)" id="' + i + '"type="range" min="' + e[1] + '"" max="' + e[2] + '" value="' + prmtr[i] + '" step="' + e[4] + '"class="prmtr"></div>';
@@ -501,32 +573,29 @@ if( !even )
 
         }
         prmtr.add = addParam;
-        function run(noparams) {
+        function run() {
             let oparams = params;
-            if (!noparams)
-                params = [];
-            else
-                prmtr.add = (e, f) => true;
+            params = [];
+
             points = [];
             edges = [];
             try {
                 log("");
                 let create = Function(document.getElementById("edit").value);
-                create();
-                center = points.reduce((v, nv) => v.map((e, k) => e + nv[k]));
-                scale = Math.sqrt(Math.max(...points.map(v => v.reduce((v2, nv2) => v2 + (nv2 * nv2), 0))));
-                points = points.map(e => e.map(f => f / scale));
+                let ret = create();
+                if (ret.runOnce)
+                    ret.runOnce();
+                currentGeometry = ret;
+                regeometry();
+
             } catch (err) {
                 errmsg(err);
             }
-            if (!noparams) {
-                for (i in oparams)
-                    if (!params[i])
-                        document.getElementById(i + "div").remove();
-            } else
-                prmtr.add = addParam;
+            for (i in oparams)
+                if (!params[i])
+                    document.getElementById(i + "div").remove();
         }
-        repanel();
+        repanel(); run();
 
     </script>
 </body>
@@ -607,14 +676,14 @@ if( !even )
             p = rot(p, e, axes[i][0], axes[i][1]);
         });
 
-        let e = edges;
+        let indices = [...Array(edges.length).keys()];
         if (p[0]) {
             while (p[0].length > 3)
                 p = dd(p);
             if (p[0].length == 3) {
                 widths = p.map((i) => 10 * prmtr.lineWidth / (i[0] + prmtr.dist))
                 if (prmtr.occlusion)
-                    e = edges.sort((v1, v2) => (p[v2[0]][0] + p[v2[1]][0]) - (p[v1[0]][0] + p[v1[1]][0]));
+                    indices = indices.sort((v1, v2) => (p[edges[v2][0]][0] + p[edges[v2][1]][0]) - (p[edges[v1][0]][0] + p[edges[v1][1]][0]));
                 p = dd(p);
             } else
                 widths = p.map((i) => prmtr.lineWidth);
@@ -623,8 +692,9 @@ if( !even )
 
 
 
-        let i = 0;
-        while (e[i]) {
+        let j = 0;
+        while (j < indices.length) {
+            let i = indices[j];
             let ox = c.width / 2;
             let oy = c.height / 2;
             let s = prmtr.segments;
@@ -635,7 +705,13 @@ if( !even )
             let ys = d[edges[i][1]][1] * scaleDim + oy - yb;
             let ws = widths[edges[i][1]] - wb;
             x.moveTo(xb, yb);
-            x.strokeStyle = 'rgb(' + edges[i][2] + ',' + edges[i][3] + ',' + edges[i][4] + ')';
+            if (edgeColors)
+                x.strokeStyle = 'rgb(' + edgeColors[i][0] + ',' + edgeColors[i][1] + ',' + edgeColors[i][2] + ')';
+            else if (pointColors)
+                x.strokeStyle = 'rgb(' + pointColors[edges[i][0]][0] + ',' + pointColors[edges[i][0]][1] + ',' + pointColors[edges[i][0]][2] + ')';
+            else
+                x.strokeStyle = 'rgb(255,255,255)';
+
             x.beginPath();
             for (s = 0; s <= prmtr.segments; ++s) {
                 let sc = 1 - (s / prmtr.segments);
@@ -644,7 +720,7 @@ if( !even )
                 x.stroke();
 
             }
-            i++;
+            j++;
         }
 
     }
